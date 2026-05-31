@@ -125,7 +125,7 @@
             color: #929aa5;
         }
 
-        /* Khu vực Thống kê Chênh lệch (MỚI) */
+        /* Khu vực Thống kê Chênh lệch */
         .diff-section {
             background-color: rgba(13, 187, 114, 0.05);
             border: 1px solid rgba(13, 187, 114, 0.2);
@@ -194,8 +194,8 @@
     </div>
 
 <script>
-    // --- CẤU HÌNH API ---
-    const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
+    // --- CẤU HÌNH API ĐÃ TÍCH HỢP PROXY CLOUDFLARE CỦA BẠN ---
+    const graphqlUrl = "https://axie-proxy.vuthanhtunghp1995.workers.dev/";
     const roninRpcUrl = "https://api.roninchain.com/rpc"; 
     
     const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
@@ -219,10 +219,10 @@
     function getRecentThursday() {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
-        const day = d.getDay(); // 0:CN, 1:T2, ... 4:T5
+        const day = d.getDay(); 
         const diff = day >= 4 ? day - 4 : day + 3;
         d.setDate(d.getDate() - diff);
-        return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; // Trả về định dạng YYYY-MM-DD
+        return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; 
     }
 
     // --- HÀM XỬ LÝ LƯU TRỮ VÀ SO SÁNH (LOCAL STORAGE) ---
@@ -231,26 +231,22 @@
         const storageKey = 'axie_history_' + address.toLowerCase();
         let history = JSON.parse(localStorage.getItem(storageKey));
 
-        // Nếu chưa có dữ liệu bao giờ
         if (!history) {
             history = {
                 lastCycle: null,
                 currentCycle: { id: currentCycleId, ...currentAssets }
             };
         } else {
-            // Nếu đã sang một mốc Thứ 5 mới
             if (history.currentCycle.id !== currentCycleId) {
-                history.lastCycle = history.currentCycle; // Chốt sổ tuần trước
-                history.currentCycle = { id: currentCycleId, ...currentAssets }; // Bắt đầu tuần mới
+                history.lastCycle = history.currentCycle; 
+                history.currentCycle = { id: currentCycleId, ...currentAssets }; 
             } else {
-                // Đang trong tuần, chỉ cập nhật số dư mới nhất
                 history.currentCycle = { id: currentCycleId, ...currentAssets };
             }
         }
         
         localStorage.setItem(storageKey, JSON.stringify(history));
 
-        // Tính chênh lệch nếu có dữ liệu tuần trước
         if (!history.lastCycle) return null;
 
         return {
@@ -261,9 +257,8 @@
         };
     }
 
-    // Hàm tạo HTML hiển thị số chênh lệch
     function renderDiffRow(name, val, colorClass, decimals) {
-        if (Math.abs(val) < 0.0001) return ''; // Bỏ qua nếu không cày được gì
+        if (Math.abs(val) < 0.0001) return ''; 
         const sign = val > 0 ? "+" : "";
         const valClass = val > 0 ? "text-green" : "text-red";
         const formattedVal = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals });
@@ -276,7 +271,7 @@
         `;
     }
 
-    // --- CÁC HÀM FETCH DỮ LIỆU CŨ TỪ BƯỚC TRƯỚC ---
+    // --- CÁC HÀM FETCH DỮ LIỆU ---
     async function fetchLivePrices() {
         try {
             const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ronin,smooth-love-potion,axie-infinity,ethereum&vs_currencies=usd");
@@ -353,18 +348,14 @@
                 fetchBountyData(wallet.address, wallet.token)
             ]);
 
-            // 1. Tính tổng USD hiện tại
             const totalUsd = (assets.ron * prices.ron) + (assets.slp * prices.slp) + (assets.axs * prices.axs) + (assets.weth * prices.weth);
 
-            // 2. Xử lý phần Lịch sử / Chênh lệch
             const diffStats = processFarmingDiff(wallet.address, assets);
             let diffHtml = "";
 
             if (!diffStats) {
-                // Lần đầu chạy code, chưa có dữ liệu thứ 5 tuần trước để so
                 diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu tuần trước để so sánh.<br>Hệ thống đã lưu mốc hôm nay.</div></div>`;
             } else {
-                // Có dữ liệu, tiến hành vẽ HTML chênh lệch
                 const diffUsd = (diffStats.ron * prices.ron) + (diffStats.slp * prices.slp) + (diffStats.axs * prices.axs) + (diffStats.weth * prices.weth);
                 const diffUsdClass = diffUsd > 0 ? "text-green" : (diffUsd < 0 ? "text-red" : "");
                 const diffUsdSign = diffUsd > 0 ? "+" : "";
@@ -388,7 +379,6 @@
                 }
             }
 
-            // In dữ liệu lên thẻ
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
                 <div class="wallet-address" title="${wallet.address}">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
