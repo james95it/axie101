@@ -250,8 +250,7 @@
     ];
 
     // Cấu hình GraphQL API qua máy chủ Proxy để vượt tường lửa CORS
-const targetUrl = "https://graphql-gateway.axieinfinity.com/graphql";
-const graphqlUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
+const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
 
     // 1. Hàm lấy điểm Bounty cho từng ví
     async function fetchBountyPoints(address) {
