@@ -93,23 +93,17 @@
             margin-bottom: 8px;
             font-size: 15px;
         }
-        .asset-item:last-child {
-            margin-bottom: 0;
-            padding-bottom: 8px;
-            border-bottom: 1px dashed #3a414a;
-        }
         .total-usd-item {
             display: flex;
             justify-content: space-between;
             margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed #3a414a;
             font-weight: bold;
             font-size: 16px;
-            color: #0dbb72;
+            color: #fff;
         }
-        .asset-name {
-            font-weight: bold;
-            width: 50px;
-        }
+        .asset-name { font-weight: bold; width: 50px; }
         .slp-text { color: #ffa3ce; }
         .axs-text { color: #0055d4; }
         .ron-text { color: #1e88e5; }
@@ -131,6 +125,34 @@
             color: #929aa5;
         }
 
+        /* Khu vực Thống kê Chênh lệch (MỚI) */
+        .diff-section {
+            background-color: rgba(13, 187, 114, 0.05);
+            border: 1px solid rgba(13, 187, 114, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        .diff-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+        .diff-row:last-child { margin-bottom: 0; }
+        .diff-total {
+            text-align: right;
+            font-weight: bold;
+            font-size: 15px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(13, 187, 114, 0.2);
+        }
+        .text-green { color: #0dbb72; }
+        .text-red { color: #f6465d; }
+        .text-gray { color: #929aa5; font-style: italic; font-size: 12px; text-align: center; }
+
         /* Khu vực Bounty */
         .bounty-badge {
             background-color: rgba(240, 185, 11, 0.1);
@@ -142,19 +164,9 @@
             justify-content: space-between;
             align-items: center;
         }
-        .bounty-info {
-            display: flex;
-            flex-direction: column;
-        }
-        .bounty-value {
-            font-size: 22px;
-            font-weight: bold;
-        }
-        .bounty-rank {
-            font-size: 13px;
-            color: #eaecef;
-            margin-top: 3px;
-        }
+        .bounty-info { display: flex; flex-direction: column; }
+        .bounty-value { font-size: 22px; font-weight: bold; }
+        .bounty-rank { font-size: 13px; color: #eaecef; margin-top: 3px; }
         
         button {
             background-color: #00c2ff;
@@ -167,14 +179,8 @@
             cursor: pointer;
             transition: opacity 0.2s;
         }
-        button:hover {
-            opacity: 0.9;
-        }
-        button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-            color: #999;
-        }
+        button:hover { opacity: 0.9; }
+        button:disabled { background-color: #555; cursor: not-allowed; color: #999; }
     </style>
 </head>
 <body>
@@ -192,14 +198,10 @@
     const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
     const roninRpcUrl = "https://api.roninchain.com/rpc"; 
     
-    // Hợp đồng Token mạng Ronin
     const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
     const AXS_CONTRACT = "0x97a9107c1793bc408eaa158ceb5a836eb15091a1";
     const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
 
-    // ==========================================
-    // KHU VỰC DANH SÁCH VÍ CỦA BẠN 
-    // ==========================================
     const wallets = [
         { 
             name: "Momo", 
@@ -213,7 +215,68 @@
         }
     ];
 
-    // --- 1. LẤY TỶ GIÁ TỪ COINGECKO ---
+    // --- HÀM TÍNH TOÁN NGÀY THỨ 5 GẦN NHẤT ---
+    function getRecentThursday() {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        const day = d.getDay(); // 0:CN, 1:T2, ... 4:T5
+        const diff = day >= 4 ? day - 4 : day + 3;
+        d.setDate(d.getDate() - diff);
+        return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; // Trả về định dạng YYYY-MM-DD
+    }
+
+    // --- HÀM XỬ LÝ LƯU TRỮ VÀ SO SÁNH (LOCAL STORAGE) ---
+    function processFarmingDiff(address, currentAssets) {
+        const currentCycleId = getRecentThursday();
+        const storageKey = 'axie_history_' + address.toLowerCase();
+        let history = JSON.parse(localStorage.getItem(storageKey));
+
+        // Nếu chưa có dữ liệu bao giờ
+        if (!history) {
+            history = {
+                lastCycle: null,
+                currentCycle: { id: currentCycleId, ...currentAssets }
+            };
+        } else {
+            // Nếu đã sang một mốc Thứ 5 mới
+            if (history.currentCycle.id !== currentCycleId) {
+                history.lastCycle = history.currentCycle; // Chốt sổ tuần trước
+                history.currentCycle = { id: currentCycleId, ...currentAssets }; // Bắt đầu tuần mới
+            } else {
+                // Đang trong tuần, chỉ cập nhật số dư mới nhất
+                history.currentCycle = { id: currentCycleId, ...currentAssets };
+            }
+        }
+        
+        localStorage.setItem(storageKey, JSON.stringify(history));
+
+        // Tính chênh lệch nếu có dữ liệu tuần trước
+        if (!history.lastCycle) return null;
+
+        return {
+            ron: currentAssets.ron - history.lastCycle.ron,
+            slp: currentAssets.slp - history.lastCycle.slp,
+            axs: currentAssets.axs - history.lastCycle.axs,
+            weth: currentAssets.weth - history.lastCycle.weth
+        };
+    }
+
+    // Hàm tạo HTML hiển thị số chênh lệch
+    function renderDiffRow(name, val, colorClass, decimals) {
+        if (Math.abs(val) < 0.0001) return ''; // Bỏ qua nếu không cày được gì
+        const sign = val > 0 ? "+" : "";
+        const valClass = val > 0 ? "text-green" : "text-red";
+        const formattedVal = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals });
+        
+        return `
+            <div class="diff-row">
+                <span class="${colorClass}">${name}</span>
+                <span class="${valClass}">${sign}${formattedVal}</span>
+            </div>
+        `;
+    }
+
+    // --- CÁC HÀM FETCH DỮ LIỆU CŨ TỪ BƯỚC TRƯỚC ---
     async function fetchLivePrices() {
         try {
             const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ronin,smooth-love-potion,axie-infinity,ethereum&vs_currencies=usd");
@@ -222,15 +285,11 @@
                 ron: data['ronin']?.usd || 0,
                 slp: data['smooth-love-potion']?.usd || 0,
                 axs: data['axie-infinity']?.usd || 0,
-                weth: data['ethereum']?.usd || 0 // Dùng giá ETH cho WETH
+                weth: data['ethereum']?.usd || 0
             };
-        } catch (error) {
-            console.error("Lỗi lấy giá:", error);
-            return { ron: 0, slp: 0, axs: 0, weth: 0 }; // Trả về 0 nếu API lỗi
-        }
+        } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
     }
 
-    // --- 2. LẤY TÀI SẢN (RON, SLP, AXS, WETH) ---
     async function fetchAssets(address) {
         try {
             const cleanAddress = address.toLowerCase().replace("0x", "");
@@ -248,47 +307,32 @@
             const axsData = await axsRes.json();
             const wethData = await wethRes.json();
 
-            const ron = ronData.result && ronData.result !== "0x" ? (parseInt(ronData.result, 16) / 1e18) : 0;
-            const slp = slpData.result && slpData.result !== "0x" ? parseInt(slpData.result, 16) : 0;
-            const axs = axsData.result && axsData.result !== "0x" ? (parseInt(axsData.result, 16) / 1e18) : 0;
-            const weth = wethData.result && wethData.result !== "0x" ? (parseInt(wethData.result, 16) / 1e18) : 0;
-
-            return { ron, slp, axs, weth };
-        } catch (error) {
-            return { ron: 0, slp: 0, axs: 0, weth: 0 };
-        }
+            return {
+                ron: ronData.result && ronData.result !== "0x" ? (parseInt(ronData.result, 16) / 1e18) : 0,
+                slp: slpData.result && slpData.result !== "0x" ? parseInt(slpData.result, 16) : 0,
+                axs: axsData.result && axsData.result !== "0x" ? (parseInt(axsData.result, 16) / 1e18) : 0,
+                weth: wethData.result && wethData.result !== "0x" ? (parseInt(wethData.result, 16) / 1e18) : 0
+            };
+        } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
     }
 
-    // --- 3. LẤY ĐIỂM BOUNTY VÀ RANK ---
     async function fetchBountyData(address, authToken) {
-        if(!authToken || authToken.includes("ĐOẠN_MÃ_TOKEN")) return { bp: "Thiếu Token", rank: "---" };
-
+        if(!authToken) return { bp: "Thiếu Token", rank: "---" };
         const rawBody = JSON.stringify({
             operationName: "GetQuestsSeasonStatsAndUserRank",
             variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
             query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n`
         });
-
         try {
-            const response = await fetch(graphqlUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": authToken },
-                body: rawBody
-            });
-            const data = await response.json();
-            
+            const res = await fetch(graphqlUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authToken }, body: rawBody });
+            const data = await res.json();
             if (data.errors) return { bp: "Sai Token", rank: "---" };
-            
-            const userData = data.data?.userLeaderboardRank;
-            return userData 
-                ? { bp: userData.score ?? 0, rank: userData.rank ?? "Chưa có" }
-                : { bp: 0, rank: "Chưa xếp hạng" };
-        } catch (error) {
-            return { bp: "Lỗi mạng", rank: "Lỗi mạng" };
-        }
+            const u = data.data?.userLeaderboardRank;
+            return u ? { bp: u.score ?? 0, rank: u.rank ?? "Chưa có" } : { bp: 0, rank: "Chưa xếp hạng" };
+        } catch (e) { return { bp: "Lỗi mạng", rank: "Lỗi mạng" }; }
     }
 
-    // --- 4. CẬP NHẬT GIAO DIỆN ---
+    // --- UPDATE UI ---
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
@@ -297,21 +341,11 @@
         btn.disabled = true;
         listEl.innerHTML = "";
 
-        // Lấy tỷ giá USD một lần duy nhất lúc bắt đầu để web chạy nhanh
         const prices = await fetchLivePrices();
 
         for (const wallet of wallets) {
             const card = document.createElement("div");
             card.className = "wallet-card";
-            card.innerHTML = `
-                <div class="wallet-name">${wallet.name}</div>
-                <div class="wallet-address">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
-                
-                <div class="assets-section">
-                    <div class="section-title"><span>Tài sản ví</span></div>
-                    <div style="text-align:center; padding:10px 0; color:#929aa5;">Đang tải...</div>
-                </div>
-            `;
             listEl.appendChild(card);
 
             const [assets, bountyData] = await Promise.all([
@@ -319,26 +353,54 @@
                 fetchBountyData(wallet.address, wallet.token)
             ]);
 
-            // Tính toán giá trị ra USD
-            const ronUsd = assets.ron * prices.ron;
-            const slpUsd = assets.slp * prices.slp;
-            const axsUsd = assets.axs * prices.axs;
-            const wethUsd = assets.weth * prices.weth;
-            const totalUsd = ronUsd + slpUsd + axsUsd + wethUsd;
+            // 1. Tính tổng USD hiện tại
+            const totalUsd = (assets.ron * prices.ron) + (assets.slp * prices.slp) + (assets.axs * prices.axs) + (assets.weth * prices.weth);
 
-            // In dữ liệu ra thẻ
+            // 2. Xử lý phần Lịch sử / Chênh lệch
+            const diffStats = processFarmingDiff(wallet.address, assets);
+            let diffHtml = "";
+
+            if (!diffStats) {
+                // Lần đầu chạy code, chưa có dữ liệu thứ 5 tuần trước để so
+                diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu tuần trước để so sánh.<br>Hệ thống đã lưu mốc hôm nay.</div></div>`;
+            } else {
+                // Có dữ liệu, tiến hành vẽ HTML chênh lệch
+                const diffUsd = (diffStats.ron * prices.ron) + (diffStats.slp * prices.slp) + (diffStats.axs * prices.axs) + (diffStats.weth * prices.weth);
+                const diffUsdClass = diffUsd > 0 ? "text-green" : (diffUsd < 0 ? "text-red" : "");
+                const diffUsdSign = diffUsd > 0 ? "+" : "";
+
+                const rowsHtml = 
+                    renderDiffRow("SLP", diffStats.slp, "slp-text", 0) +
+                    renderDiffRow("RON", diffStats.ron, "ron-text", 3) +
+                    renderDiffRow("AXS", diffStats.axs, "axs-text", 3) +
+                    renderDiffRow("WETH", diffStats.weth, "weth-text", 4);
+
+                if (rowsHtml === "") {
+                    diffHtml = `<div class="diff-section"><div class="text-gray">Tài sản không thay đổi so với tuần trước.</div></div>`;
+                } else {
+                    diffHtml = `
+                        <div class="diff-section">
+                            <div class="section-title" style="border:none; margin-bottom:5px;"><span>Tiến độ từ Thứ 5</span></div>
+                            ${rowsHtml}
+                            <div class="diff-total ${diffUsdClass}">${diffUsdSign}$${diffUsd.toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            // In dữ liệu lên thẻ
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
                 <div class="wallet-address" title="${wallet.address}">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
                 
                 <div class="assets-section">
-                    <div class="section-title"><span>Tài sản ví</span></div>
+                    <div class="section-title"><span>Tổng tài sản hiện tại</span></div>
                     
                     <div class="asset-item">
                         <span class="asset-name ron-text">RON</span>
                         <div class="asset-numbers">
                             <span class="asset-value">${assets.ron.toFixed(3)}</span>
-                            <span class="usd-value">~$${ronUsd.toFixed(2)}</span>
+                            <span class="usd-value">~$${(assets.ron * prices.ron).toFixed(2)}</span>
                         </div>
                     </div>
                     
@@ -346,7 +408,7 @@
                         <span class="asset-name slp-text">SLP</span>
                         <div class="asset-numbers">
                             <span class="asset-value">${assets.slp.toLocaleString()}</span>
-                            <span class="usd-value">~$${slpUsd.toFixed(2)}</span>
+                            <span class="usd-value">~$${(assets.slp * prices.slp).toFixed(2)}</span>
                         </div>
                     </div>
                     
@@ -354,7 +416,7 @@
                         <span class="asset-name axs-text">AXS</span>
                         <div class="asset-numbers">
                             <span class="asset-value">${assets.axs.toFixed(3)}</span>
-                            <span class="usd-value">~$${axsUsd.toFixed(2)}</span>
+                            <span class="usd-value">~$${(assets.axs * prices.axs).toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -362,15 +424,17 @@
                         <span class="asset-name weth-text">WETH</span>
                         <div class="asset-numbers">
                             <span class="asset-value">${assets.weth.toFixed(4)}</span>
-                            <span class="usd-value">~$${wethUsd.toFixed(2)}</span>
+                            <span class="usd-value">~$${(assets.weth * prices.weth).toFixed(2)}</span>
                         </div>
                     </div>
 
                     <div class="total-usd-item">
                         <span>Tổng quy đổi:</span>
-                        <span>$${totalUsd.toFixed(2)}</span>
+                        <span style="color:#0dbb72;">$${totalUsd.toFixed(2)}</span>
                     </div>
                 </div>
+
+                ${diffHtml}
 
                 <div class="bounty-badge">
                     <div class="bounty-info">
@@ -386,7 +450,6 @@
         btn.disabled = false;
     }
 
-    // Chạy ngay khi tải xong file
     window.onload = updateDashboard;
 </script>
 
