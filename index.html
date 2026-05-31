@@ -249,8 +249,9 @@
         { symbol: "USDC", address: "0x067FBFf8990c58Ab90BaE3c97241C5d736053F77", decimals: 6, cgId: "usd-coin" }
     ];
 
-    // Cấu hình GraphQL API cho Bounties
-    const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
+    // Cấu hình GraphQL API qua máy chủ Proxy để vượt tường lửa CORS
+const targetUrl = "https://graphql-gateway.axieinfinity.com/graphql";
+const graphqlUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
 
     // 1. Hàm lấy điểm Bounty cho từng ví
     async function fetchBountyPoints(address) {
