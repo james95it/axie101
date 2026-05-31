@@ -68,7 +68,6 @@
             text-align: center;
         }
         
-        /* Khu vực Tài sản */
         .assets-section {
             background-color: #1e2329;
             border-radius: 8px;
@@ -125,7 +124,6 @@
             color: #929aa5;
         }
 
-        /* Khu vực Thống kê Chênh lệch */
         .diff-section {
             background-color: rgba(13, 187, 114, 0.05);
             border: 1px solid rgba(13, 187, 114, 0.2);
@@ -153,7 +151,6 @@
         .text-red { color: #f6465d; }
         .text-gray { color: #929aa5; font-style: italic; font-size: 12px; text-align: center; }
 
-        /* Khu vực Bounty */
         .bounty-badge {
             background-color: rgba(240, 185, 11, 0.1);
             color: #f0b90b;
@@ -190,16 +187,15 @@
     <button onclick="updateDashboard()" id="refreshBtn">Cập nhật toàn bộ</button>
 </div>
 
-<div class="wallets-list" id="walletsList">
-    </div>
+<div class="wallets-list" id="walletsList"></div>
 
 <script>
-    // --- CẤU HÌNH API ĐÃ TÍCH HỢP PROXY CLOUDFLARE CỦA BẠN ---
     const graphqlUrl = "https://axie-proxy.vuthanhtunghp1995.workers.dev/";
     const roninRpcUrl = "https://api.roninchain.com/rpc"; 
     
     const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
     const AXS_CONTRACT = "0x97a9107c1793bc408eaa158ceb5a836eb15091a1";
+    const STAKED_AXS_CONTRACT = "0x05b0bb3c1c320b280501b86706c3551995bc8571"; // Cập nhật: Thêm hợp đồng AXS đang Stake
     const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
 
     const wallets = [
@@ -246,7 +242,6 @@
         
     ];
 
-    // --- HÀM TÍNH TOÁN NGÀY THỨ 5 GẦN NHẤT ---
     function getRecentThursday() {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
@@ -256,7 +251,6 @@
         return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; 
     }
 
-    // --- HÀM XỬ LÝ LƯU TRỮ VÀ SO SÁNH (LOCAL STORAGE) ---
     function processFarmingDiff(address, currentAssets) {
         const currentCycleId = getRecentThursday();
         const storageKey = 'axie_history_' + address.toLowerCase();
@@ -294,15 +288,9 @@
         const valClass = val > 0 ? "text-green" : "text-red";
         const formattedVal = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals });
         
-        return `
-            <div class="diff-row">
-                <span class="${colorClass}">${name}</span>
-                <span class="${valClass}">${sign}${formattedVal}</span>
-            </div>
-        `;
+        return `<div class="diff-row"><span class="${colorClass}">${name}</span><span class="${valClass}">${sign}${formattedVal}</span></div>`;
     }
 
-    // --- CÁC HÀM FETCH DỮ LIỆU ---
     async function fetchLivePrices() {
         try {
             const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ronin,smooth-love-potion,axie-infinity,ethereum&vs_currencies=usd");
@@ -316,28 +304,42 @@
         } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
     }
 
+    // Cập nhật: Hàm chuyển đổi chuẩn BigInt siêu chính xác chống tràn số
+    function hexToDec(hexStr, decimals) {
+        if (!hexStr || hexStr === "0x" || hexStr === "0x0") return 0;
+        try {
+            return Number(BigInt(hexStr)) / Math.pow(10, decimals);
+        } catch(e) { return 0; }
+    }
+
     async function fetchAssets(address) {
         try {
             const cleanAddress = address.toLowerCase().replace("0x", "");
             const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress;
 
-            const [ronRes, slpRes, axsRes, wethRes] = await Promise.all([
+            // Bổ sung: Gửi request lấy cả AXS thường và Staked AXS
+            const [ronRes, slpRes, axsRes, wethRes, stakedAxsRes] = await Promise.all([
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }),
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }),
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3}) }),
-                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4}) })
+                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4}) }),
+                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: STAKED_AXS_CONTRACT, data: balanceDataParam}, "latest"], id:5}) })
             ]);
 
             const ronData = await ronRes.json();
             const slpData = await slpRes.json();
             const axsData = await axsRes.json();
             const wethData = await wethRes.json();
+            const stakedAxsData = await stakedAxsRes.json();
+
+            // Tính tổng AXS (Có sẵn + Đang Stake)
+            const totalAxs = hexToDec(axsData.result, 18) + hexToDec(stakedAxsData.result, 18);
 
             return {
-                ron: ronData.result && ronData.result !== "0x" ? (parseInt(ronData.result, 16) / 1e18) : 0,
-                slp: slpData.result && slpData.result !== "0x" ? parseInt(slpData.result, 16) : 0,
-                axs: axsData.result && axsData.result !== "0x" ? (parseInt(axsData.result, 16) / 1e18) : 0,
-                weth: wethData.result && wethData.result !== "0x" ? (parseInt(wethData.result, 16) / 1e18) : 0
+                ron: hexToDec(ronData.result, 18),
+                slp: hexToDec(slpData.result, 0),
+                axs: totalAxs,
+                weth: hexToDec(wethData.result, 18)
             };
         } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
     }
@@ -358,7 +360,6 @@
         } catch (e) { return { bp: "Lỗi mạng", rank: "Lỗi mạng" }; }
     }
 
-    // --- UPDATE UI ---
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
