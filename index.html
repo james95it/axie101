@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình Quản Lý Tài Sản Ví Ronin - Bản Sửa Lỗi WETH</title>
+    <title>Trình Quản Lý Tài Sản Ví Ronin - Chuẩn Contract</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         body {
@@ -34,11 +34,12 @@
             background-color: #2b3139;
             padding: 10px;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 13px;
             text-align: center;
             word-break: break-all;
             color: #929aa5;
             margin-bottom: 20px;
+            font-family: monospace;
         }
         .total-wealth {
             text-align: center;
@@ -68,6 +69,9 @@
             padding: 12px 0;
             border-bottom: 1px solid #2b3139;
         }
+        .token-row.empty {
+            opacity: 0.4; /* Làm mờ các token có số dư bằng 0 */
+        }
         .token-info {
             display: flex;
             flex-direction: column;
@@ -91,6 +95,9 @@
             font-size: 13px;
             color: #0ecb81;
             margin-top: 2px;
+        }
+        .token-row.empty .balance-usd {
+            color: #929aa5;
         }
         button {
             background-color: #f0b90b;
@@ -126,7 +133,7 @@
     </div>
 
     <div class="token-list" id="tokenList">
-        <div style="text-align: center; color: #929aa5;">Đang tải dữ liệu tài sản...</div>
+        <div style="text-align: center; color: #929aa5;">Đang quét dữ liệu Blockchain...</div>
     </div>
 
     <button id="updateBtn" onclick="updateDashboard()">Cập nhật số dư</button>
@@ -134,25 +141,22 @@
 
 <script>
     const walletAddress = "0x39fac7a74365c188c293bd9a064323b50e63cde7";
-    
-    // Đổi sang RPC Node dự phòng hiệu năng cao của Ronin để tránh nghẽn mạng
     const rpcUrl = "https://api.roninchain.com/rpc";
     const provider = new ethers.JsonRpcProvider(rpcUrl);
 
-    // Danh sách Token được tối ưu chuẩn xác định dạng ID và Contract
+    // CẬP NHẬT CHÍNH XÁC SMART CONTRACT CỦA MẠNG LƯỚI RONIN (2024)
     const tokensConfig = [
         { symbol: "RON", name: "Ronin", isNative: true, decimals: 18, cgId: "ronin" },
-        { symbol: "WETH", name: "Wrapped Ether", address: "0xc99a6a985ed2cac1b9e61b8079085196a76b0ef9", decimals: 18, cgId: "weth" },
+        { symbol: "WETH", name: "Wrapped Ether", address: "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5", decimals: 18, cgId: "weth" },
         { symbol: "AXS", name: "Axie Infinity Shards", address: "0x97a9107c1793bc407d6f527b77e7fff4d812bece", decimals: 18, cgId: "axie-infinity" },
         { symbol: "SLP", name: "Smooth Love Potion", address: "0xa8754b9fa15fc18bb59458815510e40a12cd2014", decimals: 0, cgId: "smooth-love-potion" },
-        { symbol: "USDC", name: "USD Coin", address: "0x0b707453521b44495447b85317d0ef9fde574657", decimals: 6, cgId: "usd-coin" }
+        { symbol: "USDC", name: "USD Coin", address: "0x067FBFf8990c58Ab90BaE3c97241C5d736053F77", decimals: 6, cgId: "usd-coin" }
     ];
 
     const minERC20Abi = [
         "function balanceOf(address account) view returns (uint256)"
     ];
 
-    // Hàm lấy giá cải tiến giúp nhận diện chính xác WETH
     async function getTokenPrices() {
         try {
             const ids = tokensConfig.map(t => t.cgId).join(",");
@@ -166,7 +170,6 @@
             return prices;
         } catch (e) {
             console.error("Lỗi lấy giá:", e);
-            // Giá dự phòng cơ bản trong trường hợp lỗi API mạng
             return { "RON": 3.0, "WETH": 3500.0, "AXS": 7.0, "SLP": 0.005, "USDC": 1.0 };
         }
     }
@@ -177,7 +180,7 @@
         const totalUsdEl = document.getElementById("totalUsd");
 
         btn.disabled = true;
-        btn.innerText = "Đang đồng bộ...";
+        btn.innerText = "Đang đồng bộ từ Ronin...";
 
         try {
             const prices = await getTokenPrices();
@@ -198,31 +201,28 @@
                     }
                 }
 
-                // Chuyển đổi định dạng BigInt blockchain về float thông thường
                 const formattedBalance = parseFloat(ethers.formatUnits(balance, token.decimals));
                 const tokenPrice = prices[token.symbol] || 0;
                 const valueInUsd = formattedBalance * tokenPrice;
 
-                // Điều kiện hiển thị: Hiển thị nếu số dư lớn hơn 0
-                if (formattedBalance > 0) {
-                    totalWalletUsd += valueInUsd;
-                    htmlContent += `
-                        <div class="token-row">
-                            <div class="token-info">
-                                <span class="token-name">${token.symbol}</span>
-                                <span class="token-price">$${tokenPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                            </div>
-                            <div class="token-balance">
-                                <div class="balance-crypto">${formattedBalance.toLocaleString('en-US', {maximumFractionDigits: 6})}</div>
-                                <div class="balance-usd">$${valueInUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
+                totalWalletUsd += valueInUsd;
+                
+                // Xác định class CSS nếu số dư = 0 để làm mờ UI
+                const emptyClass = formattedBalance === 0 ? "empty" : "";
 
-            if (htmlContent === "") {
-                htmlContent = `<div style="text-align: center; color: #929aa5; padding: 20px;">Không tìm thấy số dư khả dụng cho các Token trên.</div>`;
+                // Hiển thị tất cả token, giúp bạn kiểm chứng WETH đã được quét
+                htmlContent += `
+                    <div class="token-row ${emptyClass}">
+                        <div class="token-info">
+                            <span class="token-name">${token.symbol}</span>
+                            <span class="token-price">$${tokenPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 5})}</span>
+                        </div>
+                        <div class="token-balance">
+                            <div class="balance-crypto">${formattedBalance.toLocaleString('en-US', {maximumFractionDigits: 6})}</div>
+                            <div class="balance-usd">$${valueInUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        </div>
+                    </div>
+                `;
             }
 
             tokenListEl.innerHTML = htmlContent;
@@ -230,7 +230,7 @@
 
         } catch (error) {
             console.error("Lỗi hệ thống:", error);
-            tokenListEl.innerHTML = `<div style="text-align: center; color: #f6465d; padding: 20px;">Lỗi kết nối dữ liệu mạng Ronin. Vui lòng thử lại!</div>`;
+            tokenListEl.innerHTML = `<div style="text-align: center; color: #f6465d; padding: 20px;">Lỗi kết nối RPC Ronin. Vui lòng thử lại!</div>`;
         } finally {
             btn.disabled = false;
             btn.innerText = "Cập nhật số dư";
