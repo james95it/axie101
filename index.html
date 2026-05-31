@@ -3,181 +3,230 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axie Bounty Dashboard</title>
+    <title>Axie Ultimate Bounty Dashboard</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
+            background-color: #0b0e11;
+            color: #eaecef;
             margin: 0;
-            padding: 20px;
+            padding: 30px 15px;
+            min-height: 100vh;
         }
-        h1 {
+        .dashboard-header {
             text-align: center;
-            color: #f3c623;
             margin-bottom: 30px;
         }
-        #dashboard {
+        .dashboard-title {
+            color: #f0b90b;
+            font-size: 26px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .wallets-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
             justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
         .wallet-card {
-            background-color: #1e1e1e;
-            border: 1px solid #333;
-            border-radius: 10px;
+            background-color: #181a20;
+            border-radius: 12px;
             padding: 20px;
-            width: 300px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: transform 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border: 1px solid #232830;
+            width: 100%;
+            max-width: 350px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, border-color 0.2s;
         }
         .wallet-card:hover {
             transform: translateY(-5px);
-            border-color: #f3c623;
+            border-color: #00c2ff;
         }
         .wallet-name {
-            font-size: 1.2em;
+            font-size: 18px;
             font-weight: bold;
-            color: #4da6ff;
+            color: #00c2ff;
             margin-bottom: 10px;
+            text-align: center;
         }
         .wallet-address {
-            font-size: 0.8em;
-            color: #888;
-            margin-bottom: 15px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #929aa5;
+            background-color: #2b3139;
+            padding: 8px 12px;
+            border-radius: 6px;
             word-break: break-all;
+            margin-bottom: 20px;
+            text-align: center;
         }
         .bounty-badge {
-            background-color: #2a2a2a;
-            padding: 10px;
+            background-color: rgba(240, 185, 11, 0.1);
+            color: #f0b90b;
+            border: 1px solid rgba(240, 185, 11, 0.3);
+            padding: 12px;
             border-radius: 8px;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            border-left: 4px solid #f3c623;
+            gap: 5px;
         }
-        .bounty-badge span:first-child {
-            color: #aaa;
-            font-size: 0.9em;
+        .bounty-badge span.label {
+            font-size: 13px;
+            color: #929aa5;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .bounty-value {
+            font-size: 24px;
             font-weight: bold;
-            color: #fff;
-            font-size: 1.1em;
         }
-        .loading {
-            text-align: center;
-            color: #aaa;
-            font-style: italic;
+        .bounty-rank {
+            font-size: 14px;
+            color: #eaecef;
+        }
+        button {
+            background-color: #00c2ff;
+            color: #000;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
         }
     </style>
 </head>
 <body>
 
-    <h1>🚀 Bảng Điều Khiển Nhiệm Vụ Axie</h1>
-    
-    <div id="dashboard">
-        <div class="loading">Đang kết nối tới máy chủ Sky Mavis...</div>
-    </div>
+<div class="dashboard-header">
+    <div class="dashboard-title">Hệ Thống Theo Dõi Nhiệm Vụ Tuần</div>
+    <button onclick="updateDashboard()" id="refreshBtn">Làm mới dữ liệu</button>
+</div>
 
-    <script>
-        // --- CẤU HÌNH DỮ LIỆU ---
-        const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
-        
-        // ⚠️ LƯU Ý QUAN TRỌNG: Mã Token này có thời hạn. 
-        // Nếu sau này web báo "Lỗi API", bạn cần lấy Token mới đè vào đây.
-        const authToken = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U";
+<div class="wallets-list" id="walletsList">
+    <!-- Thẻ ví sẽ được tạo tự động bằng Javascript -->
+</div>
 
-        // Danh sách các ví bạn muốn theo dõi (Thêm ví khác vào đây)
-        const wallets = [
-        { name: "James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7" },
-        { name: "Mono", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a" },
-        { name: "Randy", address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01" }
+<script>
+    const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
+
+    // ==========================================
+    // KHU VỰC CẤU HÌNH VÍ CỦA BẠN
+    // ==========================================
+    const wallets = [
+        { 
+            name: "", 
+            address: ""0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a",
+            // Dán toàn bộ mã token dài ngoằng của ví 1 vào giữa cặp ngoặc kép này
+            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U" 
+        },
+        { 
+            name: "", 
+            address: "0x39fac7a74365c188c293bd9a064323b50e63cde7",
+            // Đăng nhập ví 2, lấy token mới và dán vào đây
+            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjVmMGMyLWVhZTItNmYwOS04YTY0LTQ3Yjk3MzExODU2NiIsInNpZCI6MjQwNjkyMjg5LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4MzlmYWM3YTc0MzY1YzE4OGMyOTNiZDlhMDY0MzIzYjUwZTYzY2RlNyIsImV4cCI6MTc4MTQxNjM4NCwiaWF0IjoxNzgwMjA2Nzg0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY1ZjBjMi1lYWUyLTZmMDktOGE2NC00N2I5NzMxMTg1NjYifQ.c7_w-BJwZl_63qnO_GWNm64Aga6eeIS_fgUec2g3tro" 
+        },
+        { 
+            name: "Ví Phụ (Acc 3)", 
+            address: "0x_ĐỊA_CHỈ_VÍ_3_CỦA_BẠN",
+            // Đăng nhập ví 3, lấy token mới và dán vào đây
+            token: "Bearer ĐOẠN_MÃ_TOKEN_VÍ_3" 
+        }
     ];
 
-        // --- HÀM LẤY DỮ LIỆU TỪ AXIE ---
-        async function fetchBountyData(address) {
-            const rawBody = JSON.stringify({
-                operationName: "GetQuestsSeasonStatsAndUserRank",
-                variables: { 
-                    user: address, 
-                    includeUserRank: true, 
-                    leaderboardType: "WeeklyPremierQuestPoints" 
+    // Hàm lấy dữ liệu cho từng ví
+    async function fetchBountyData(address, authToken) {
+        const rawBody = JSON.stringify({
+            operationName: "GetQuestsSeasonStatsAndUserRank",
+            variables: { 
+                user: address, 
+                includeUserRank: true, 
+                leaderboardType: "WeeklyPremierQuestPoints" 
+            },
+            query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n`
+        });
+
+        try {
+            const response = await fetch(graphqlUrl, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": authToken // Sử dụng token truyền vào từ danh sách
                 },
-                query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n`
+                body: rawBody
             });
-
-            try {
-                const response = await fetch(graphqlUrl, {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "Authorization": authToken
-                    },
-                    body: rawBody
-                });
-                const data = await response.json();
-                
-                if (data.errors) {
-                    console.error(`Lỗi API cho ví ${address}:`, data.errors);
-                    return { bp: "Lỗi API", rank: "---" };
-                }
-                
-                const userData = data.data?.userLeaderboardRank;
-                if (userData) {
-                    return { 
-                        bp: userData.score ?? 0, 
-                        rank: userData.rank ?? "Chưa có" 
-                    };
-                }
-                
-                return { bp: 0, rank: "Chưa xếp hạng" };
-                
-            } catch (error) {
-                console.error(`Lỗi mạng khi lấy dữ liệu ${address}:`, error);
-                return { bp: "Lỗi mạng", rank: "Lỗi mạng" };
+            const data = await response.json();
+            
+            if (data.errors) return { bp: "Lỗi Token", rank: "---" };
+            
+            const userData = data.data?.userLeaderboardRank;
+            if (userData) {
+                return { bp: userData.score ?? 0, rank: userData.rank ?? "Chưa xếp hạng" };
             }
+            
+            return { bp: 0, rank: "Chưa xếp hạng" };
+            
+        } catch (error) {
+            return { bp: "Lỗi mạng", rank: "Lỗi mạng" };
+        }
+    }
+
+    // Hàm cập nhật toàn bộ giao diện
+    async function updateDashboard() {
+        const listEl = document.getElementById("walletsList");
+        const btn = document.getElementById("refreshBtn");
+        
+        btn.innerText = "Đang tải...";
+        btn.disabled = true;
+        listEl.innerHTML = "";
+
+        for (const wallet of wallets) {
+            // Tạo khung thẻ tĩnh trước
+            const card = document.createElement("div");
+            card.className = "wallet-card";
+            card.innerHTML = `
+                <div class="wallet-name">${wallet.name}</div>
+                <div class="wallet-address">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
+                <div class="bounty-badge">
+                    <span class="label">Điểm & Thứ Hạng</span>
+                    <span class="bounty-value">...</span>
+                    <span class="bounty-rank">Đang lấy dữ liệu</span>
+                </div>
+            `;
+            listEl.appendChild(card);
+
+            // Chờ API trả kết quả về (truyền vào cả địa chỉ VÀ mã token của ví đó)
+            const bountyData = await fetchBountyData(wallet.address, wallet.token);
+
+            // Ghi đè dữ liệu thật lên thẻ
+            card.innerHTML = `
+                <div class="wallet-name">${wallet.name}</div>
+                <div class="wallet-address" title="${wallet.address}">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
+                <div class="bounty-badge">
+                    <span class="label">Điểm & Thứ Hạng</span>
+                    <span class="bounty-value">${bountyData.bp} BP</span>
+                    <span class="bounty-rank">Rank: ${bountyData.rank}</span>
+                </div>
+            `;
         }
 
-        // --- HÀM XỬ LÝ GIAO DIỆN ---
-        async function updateDashboard() {
-            const dashboard = document.getElementById("dashboard");
-            dashboard.innerHTML = ""; // Xóa chữ "Đang tải"
+        btn.innerText = "Làm mới dữ liệu";
+        btn.disabled = false;
+    }
 
-            for (const wallet of wallets) {
-                // Tạo khung cho từng ví
-                const card = document.createElement("div");
-                card.className = "wallet-card";
-                
-                // Hiển thị thông tin chờ (Đang tải...)
-                card.innerHTML = `
-                    <div class="wallet-name">${wallet.name}</div>
-                    <div class="wallet-address">${wallet.address.substring(0, 8)}...${wallet.address.substring(38)}</div>
-                    <div class="bounty-badge">
-                        <span>Bounty (Tuần)</span>
-                        <span class="bounty-value">Đang tải...</span>
-                    </div>
-                `;
-                dashboard.appendChild(card);
+    // Tự động chạy khi vừa mở file
+    window.onload = updateDashboard;
+</script>
 
-                // Gọi API lấy dữ liệu thực tế
-                const bountyData = await fetchBountyData(wallet.address);
-
-                // Cập nhật lại khung ví sau khi có dữ liệu
-                card.innerHTML = `
-                    <div class="wallet-name">${wallet.name}</div>
-                    <div class="wallet-address">${wallet.address.substring(0, 8)}...${wallet.address.substring(38)}</div>
-                    <div class="bounty-badge">
-                        <span>Bounty (Tuần)</span>
-                        <span class="bounty-value">${bountyData.bp} BP | Hạng ${bountyData.rank}</span>
-                    </div>
-                `;
-            }
-        }
-
-        // Chạy hàm ngay khi trang tải xong
-        document.addEventListener("DOMContentLoaded", updateDashboard);
-    </script>
 </body>
 </html>
