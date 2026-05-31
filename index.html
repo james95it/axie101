@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ronin Multi-Wallet Dashboard</title>
+    <title>Ronin Multi-Wallet Dashboard (Vertical)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         :root {
@@ -21,19 +21,20 @@
             background-color: var(--bg-main);
             color: var(--text-main);
             margin: 0;
-            padding: 30px;
+            padding: 30px 15px;
             min-height: 100vh;
         }
 
         .dashboard-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .dashboard-title {
             color: var(--primary);
-            font-size: 28px;
-            margin-bottom: 10px;
+            font-size: 26px;
+            margin-bottom: 15px;
+            font-weight: bold;
         }
 
         /* Khối tổng tài sản toàn bộ ví */
@@ -42,7 +43,7 @@
             border: 1px solid #333;
             border-radius: 16px;
             padding: 25px;
-            max-width: 400px;
+            max-width: 500px; /* Đồng bộ chiều rộng với các ví */
             margin: 0 auto 40px auto;
             text-align: center;
             box-shadow: 0 8px 16px rgba(0,0,0,0.4);
@@ -62,12 +63,13 @@
             margin: 10px 0;
         }
 
-        /* Lưới chứa các ví */
-        .wallets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 25px;
-            max-width: 1400px;
+        /* Bố cục danh sách dọc (Vertical Layout) */
+        .wallets-list {
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Căn giữa các ví */
+            gap: 20px; /* Khoảng cách giữa các ví */
+            max-width: 100%;
             margin: 0 auto;
         }
 
@@ -78,55 +80,76 @@
             padding: 20px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             border: 1px solid #232830;
+            width: 100%;
+            max-width: 500px; /* Giới hạn độ rộng để form dọc luôn đẹp */
             display: flex;
             flex-direction: column;
+        }
+
+        .wallet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
         }
 
         .wallet-name {
             font-size: 18px;
             font-weight: bold;
             color: var(--primary);
-            margin: 0 0 5px 0;
+        }
+
+        .wallet-subtotal {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
         }
 
         .wallet-address {
             font-family: monospace;
-            font-size: 12px;
+            font-size: 13px;
             color: var(--text-muted);
             background-color: var(--bg-box);
-            padding: 6px 10px;
+            padding: 8px 12px;
             border-radius: 6px;
             word-break: break-all;
             margin-bottom: 15px;
+            text-align: center;
         }
 
-        .wallet-subtotal {
-            font-size: 20px;
-            font-weight: bold;
-            color: #fff;
-            border-bottom: 1px solid var(--bg-box);
-            padding-bottom: 12px;
-            margin-bottom: 10px;
+        .token-list {
+            border-top: 1px solid var(--bg-box);
+            padding-top: 10px;
         }
 
         .token-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            font-size: 14px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #2b3139;
+        }
+        
+        .token-row:last-child {
+            border-bottom: none;
         }
 
         .token-symbol {
             font-weight: bold;
+            font-size: 15px;
         }
 
         .token-amount {
             text-align: right;
         }
 
+        .token-crypto {
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
         .token-usd {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--success);
         }
 
@@ -137,17 +160,15 @@
             padding: 15px 0;
         }
 
-        /* Nút cập nhật toàn cục */
         .action-container {
             text-align: center;
-            margin-bottom: 30px;
         }
 
         button {
             background-color: var(--primary);
             color: #000;
             border: none;
-            padding: 14px 30px;
+            padding: 12px 28px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: bold;
@@ -178,25 +199,22 @@
 </div>
 
 <div class="grand-total-card">
-    <div class="grand-total-label">Tổng Tài Sản Tất Cả Ví</div>
+    <div class="grand-total-label">Tổng Tài Sản (USD)</div>
     <div class="grand-total-value" id="grandTotalUsd">$0.00</div>
 </div>
 
-<div class="wallets-grid" id="walletsGrid">
-    </div>
+<div class="wallets-list" id="walletsList">
+    <div style="text-align: center; color: var(--text-muted);">Bấm "Đồng bộ" để tải dữ liệu...</div>
+</div>
 
 <script>
-    // =========================================================================
-    // NƠI CẤU HÌNH DANH SÁCH VÍ CỦA BẠN
-    // Bạn có thể thêm bao nhiêu ví tùy thích theo cấu trúc dưới đây
-    // =========================================================================
+    // Danh sách ví của bạn
     const wallets = [
-        { name: "Ví James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7" },
-        { name: "Ví Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a" }, // Ví dụ copy trùng để test giao diện layout trước
-        { name: "Ví Randy", address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01" }  
+        { name: "James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7" },
+        { name: "Mono", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a" },
+        { name: "Randy", address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01" }
     ];
 
-    // Cấu hình RPC và Smart Contract chuẩn mạng Ronin
     const rpcUrl = "https://api.roninchain.com/rpc";
     const provider = new ethers.JsonRpcProvider(rpcUrl);
 
@@ -210,7 +228,6 @@
 
     const minERC20Abi = ["function balanceOf(address account) view returns (uint256)"];
 
-    // Hàm lấy giá từ CoinGecko API
     async function getTokenPrices() {
         try {
             const ids = tokensConfig.map(t => t.cgId).join(",");
@@ -224,31 +241,28 @@
             return prices;
         } catch (e) {
             console.error("Lỗi lấy tỷ giá:", e);
-            // Giá mặc định dự phòng nếu API nghẽn
             return { "RON": 3.0, "WETH": 3500.0, "AXS": 7.0, "SLP": 0.005, "USDC": 1.0 };
         }
     }
 
     async function updateDashboard() {
         const btn = document.getElementById("updateBtn");
-        const gridEl = document.getElementById("walletsGrid");
+        const listEl = document.getElementById("walletsList");
         const grandTotalEl = document.getElementById("grandTotalUsd");
 
         btn.disabled = true;
-        btn.innerText = "Đang đồng bộ dữ liệu...";
-        gridEl.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">Đang quét blockchain cho tất cả các ví...</div>`;
+        btn.innerText = "Đang đồng bộ...";
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); width: 100%;">Đang quét blockchain cho tất cả các ví...</div>`;
 
         try {
             const prices = await getTokenPrices();
             let totalDashboardUsd = 0;
-            let gridHtml = "";
+            let listHtml = "";
 
-            // Duyệt qua từng ví trong mảng danh sách
             for (let wallet of wallets) {
                 let walletTotalUsd = 0;
                 let tokenRowsHtml = "";
 
-                // Quét từng token trong ví này
                 for (let token of tokensConfig) {
                     let balance = 0n;
 
@@ -265,7 +279,6 @@
 
                     const formattedBalance = parseFloat(ethers.formatUnits(balance, token.decimals));
                     
-                    // Chỉ hiển thị token trong thẻ ví nếu số dư thực tế > 0 để giao diện gọn gàng
                     if (formattedBalance > 0) {
                         const tokenPrice = prices[token.symbol] || 0;
                         const usdValue = formattedBalance * tokenPrice;
@@ -275,7 +288,7 @@
                             <div class="token-row">
                                 <span class="token-symbol">${token.symbol}</span>
                                 <div class="token-amount">
-                                    <div>${formattedBalance.toLocaleString('en-US', {maximumFractionDigits: 6})}</div>
+                                    <div class="token-crypto">${formattedBalance.toLocaleString('en-US', {maximumFractionDigits: 6})}</div>
                                     <div class="token-usd">$${usdValue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
                                 </div>
                             </div>
@@ -283,23 +296,21 @@
                     }
                 }
 
-                // Nếu ví không có token nào > 0
                 if (tokenRowsHtml === "") {
-                    tokenRowsHtml = `<div class="no-tokens">Ví này không chứa token nào.</div>`;
+                    tokenRowsHtml = `<div class="no-tokens">Ví trống.</div>`;
                 }
 
-                // Cộng dồn vào tổng lớn của cả Dashboard
                 totalDashboardUsd += walletTotalUsd;
+                const shortAddr = wallet.address.substring(0,8) + "..." + wallet.address.substring(wallet.address.length - 6);
 
-                // Cắt bớt hiển thị địa chỉ ví cho đẹp UI (Ví dụ: 0x39fa...cde7)
-                const shortAddr = wallet.address.substring(0,6) + "..." + wallet.address.substring(wallet.address.length - 4);
-
-                // Tạo chuỗi HTML cho thẻ ví này
-                gridHtml += `
+                // Cấu trúc HTML của thẻ ví được tinh chỉnh lại cho form dọc
+                listHtml += `
                     <div class="wallet-card">
-                        <div class="wallet-name">${wallet.name}</div>
+                        <div class="wallet-header">
+                            <div class="wallet-name">${wallet.name}</div>
+                            <div class="wallet-subtotal">$${walletTotalUsd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                        </div>
                         <div class="wallet-address" title="${wallet.address}">${shortAddr}</div>
-                        <div class="wallet-subtotal">$${walletTotalUsd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
                         <div class="token-list">
                             ${tokenRowsHtml}
                         </div>
@@ -307,20 +318,18 @@
                 `;
             }
 
-            // Đẩy dữ liệu ra giao diện màn hình
-            gridEl.innerHTML = gridHtml;
+            listEl.innerHTML = listHtml;
             grandTotalEl.innerText = "$" + totalDashboardUsd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
         } catch (error) {
             console.error("Lỗi Dashboard:", error);
-            gridEl.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #f6465d;">Đã xảy ra lỗi hệ thống khi kết nối RPC. Vui lòng thử lại!</div>`;
+            listEl.innerHTML = `<div style="text-align: center; color: #f6465d; width: 100%;">Đã xảy ra lỗi hệ thống khi kết nối RPC. Vui lòng thử lại!</div>`;
         } finally {
             btn.disabled = false;
             btn.innerText = "Đồng bộ tất cả ví";
         }
     }
 
-    // Tự động kích hoạt khi tải trang
     window.onload = updateDashboard;
 </script>
 
