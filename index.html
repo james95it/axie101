@@ -3,160 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình Quản Lý Tài Sản Ví Ronin - Chuẩn Contract</title>
+    <title>Ronin Multi-Wallet Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
+        :root {
+            --bg-main: #0b0e11;
+            --bg-card: #181a20;
+            --bg-box: #2b3139;
+            --text-main: #eaecef;
+            --text-muted: #929aa5;
+            --primary: #f0b90b;
+            --success: #0ecb81;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0b0e11;
-            color: #eaecef;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            background-color: var(--bg-main);
+            color: var(--text-main);
             margin: 0;
-            padding: 20px;
-        }
-        .container {
-            background-color: #181a20;
             padding: 30px;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .dashboard-title {
+            color: var(--primary);
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        /* Khối tổng tài sản toàn bộ ví */
+        .grand-total-card {
+            background: linear-gradient(135deg, #1e222b 0%, #14171c 100%);
+            border: 1px solid #333;
             border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 500px;
-        }
-        h2 {
+            padding: 25px;
+            max-width: 400px;
+            margin: 0 auto 40px auto;
             text-align: center;
-            margin-top: 0;
-            color: #f0b90b;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
         }
-        .address {
-            background-color: #2b3139;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 13px;
-            text-align: center;
-            word-break: break-all;
-            color: #929aa5;
-            margin-bottom: 20px;
-            font-family: monospace;
-        }
-        .total-wealth {
-            text-align: center;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #2b3139;
-            padding-bottom: 20px;
-        }
-        .total-wealth p {
-            margin: 0;
-            color: #929aa5;
+
+        .grand-total-label {
             font-size: 14px;
+            color: var(--text-muted);
             text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .total-amount {
-            font-size: 36px;
+
+        .grand-total-value {
+            font-size: 42px;
             font-weight: bold;
-            color: #0ecb81;
-            margin-top: 5px;
+            color: var(--success);
+            margin: 10px 0;
         }
-        .token-list {
-            margin-bottom: 25px;
+
+        /* Lưới chứa các ví */
+        .wallets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
         }
+
+        /* Thẻ cho từng ví */
+        .wallet-card {
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border: 1px solid #232830;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .wallet-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 0 0 5px 0;
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            background-color: var(--bg-box);
+            padding: 6px 10px;
+            border-radius: 6px;
+            word-break: break-all;
+            margin-bottom: 15px;
+        }
+
+        .wallet-subtotal {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            border-bottom: 1px solid var(--bg-box);
+            padding-bottom: 12px;
+            margin-bottom: 10px;
+        }
+
         .token-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #2b3139;
+            padding: 8px 0;
+            font-size: 14px;
         }
-        .token-row.empty {
-            opacity: 0.4; /* Làm mờ các token có số dư bằng 0 */
-        }
-        .token-info {
-            display: flex;
-            flex-direction: column;
-        }
-        .token-name {
+
+        .token-symbol {
             font-weight: bold;
-            font-size: 16px;
         }
-        .token-price {
-            font-size: 12px;
-            color: #929aa5;
-            margin-top: 2px;
-        }
-        .token-balance {
+
+        .token-amount {
             text-align: right;
         }
-        .balance-crypto {
-            font-weight: bold;
+
+        .token-usd {
+            font-size: 12px;
+            color: var(--success);
         }
-        .balance-usd {
+
+        .no-tokens {
+            color: var(--text-muted);
             font-size: 13px;
-            color: #0ecb81;
-            margin-top: 2px;
+            text-align: center;
+            padding: 15px 0;
         }
-        .token-row.empty .balance-usd {
-            color: #929aa5;
+
+        /* Nút cập nhật toàn cục */
+        .action-container {
+            text-align: center;
+            margin-bottom: 30px;
         }
+
         button {
-            background-color: #f0b90b;
+            background-color: var(--primary);
             color: #000;
             border: none;
-            padding: 14px;
+            padding: 14px 30px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            width: 100%;
             transition: opacity 0.2s;
+            box-shadow: 0 4px 12px rgba(240, 185, 11, 0.2);
         }
+
         button:hover {
             opacity: 0.9;
         }
+
         button:disabled {
-            background-color: #474d57;
-            color: #929aa5;
+            background-color: var(--bg-box);
+            color: var(--text-muted);
             cursor: not-allowed;
+            box-shadow: none;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Tài Sản Ví Ronin</h2>
-    <div class="address" id="walletAddress">0x39fac7a74365c188c293bd9a064323b50e63cde7</div>
-
-    <div class="total-wealth">
-        <p>Tổng giá trị ước tính</p>
-        <div class="total-amount" id="totalUsd">$0.00</div>
+<div class="dashboard-header">
+    <div class="dashboard-title">Hệ Thống Quản Lý Đa Ví Ronin</div>
+    <div class="action-container">
+        <button id="updateBtn" onclick="updateDashboard()">Đồng bộ tất cả ví</button>
     </div>
-
-    <div class="token-list" id="tokenList">
-        <div style="text-align: center; color: #929aa5;">Đang quét dữ liệu Blockchain...</div>
-    </div>
-
-    <button id="updateBtn" onclick="updateDashboard()">Cập nhật số dư</button>
 </div>
 
+<div class="grand-total-card">
+    <div class="grand-total-label">Tổng Tài Sản Tất Cả Ví</div>
+    <div class="grand-total-value" id="grandTotalUsd">$0.00</div>
+</div>
+
+<div class="wallets-grid" id="walletsGrid">
+    </div>
+
 <script>
-    const walletAddress = "0x39fac7a74365c188c293bd9a064323b50e63cde7";
+    // =========================================================================
+    // NƠI CẤU HÌNH DANH SÁCH VÍ CỦA BẠN
+    // Bạn có thể thêm bao nhiêu ví tùy thích theo cấu trúc dưới đây
+    // =========================================================================
+    const wallets = [
+        { name: "Ví James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7" },
+        { name: "Ví Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a" }, // Ví dụ copy trùng để test giao diện layout trước
+        { name: "Ví Randy", address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01" }  
+    ];
+
+    // Cấu hình RPC và Smart Contract chuẩn mạng Ronin
     const rpcUrl = "https://api.roninchain.com/rpc";
     const provider = new ethers.JsonRpcProvider(rpcUrl);
 
-    // CẬP NHẬT CHÍNH XÁC SMART CONTRACT CỦA MẠNG LƯỚI RONIN (2024)
     const tokensConfig = [
-        { symbol: "RON", name: "Ronin", isNative: true, decimals: 18, cgId: "ronin" },
-        { symbol: "WETH", name: "Wrapped Ether", address: "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5", decimals: 18, cgId: "weth" },
-        { symbol: "AXS", name: "Axie Infinity Shards", address: "0x97a9107c1793bc407d6f527b77e7fff4d812bece", decimals: 18, cgId: "axie-infinity" },
-        { symbol: "SLP", name: "Smooth Love Potion", address: "0xa8754b9fa15fc18bb59458815510e40a12cd2014", decimals: 0, cgId: "smooth-love-potion" },
-        { symbol: "USDC", name: "USD Coin", address: "0x067FBFf8990c58Ab90BaE3c97241C5d736053F77", decimals: 6, cgId: "usd-coin" }
+        { symbol: "RON", isNative: true, decimals: 18, cgId: "ronin" },
+        { symbol: "WETH", address: "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5", decimals: 18, cgId: "weth" },
+        { symbol: "AXS", address: "0x97a9107c1793bc407d6f527b77e7fff4d812bece", decimals: 18, cgId: "axie-infinity" },
+        { symbol: "SLP", address: "0xa8754b9fa15fc18bb59458815510e40a12cd2014", decimals: 0, cgId: "smooth-love-potion" },
+        { symbol: "USDC", address: "0x067FBFf8990c58Ab90BaE3c97241C5d736053F77", decimals: 6, cgId: "usd-coin" }
     ];
 
-    const minERC20Abi = [
-        "function balanceOf(address account) view returns (uint256)"
-    ];
+    const minERC20Abi = ["function balanceOf(address account) view returns (uint256)"];
 
+    // Hàm lấy giá từ CoinGecko API
     async function getTokenPrices() {
         try {
             const ids = tokensConfig.map(t => t.cgId).join(",");
@@ -169,74 +223,104 @@
             });
             return prices;
         } catch (e) {
-            console.error("Lỗi lấy giá:", e);
+            console.error("Lỗi lấy tỷ giá:", e);
+            // Giá mặc định dự phòng nếu API nghẽn
             return { "RON": 3.0, "WETH": 3500.0, "AXS": 7.0, "SLP": 0.005, "USDC": 1.0 };
         }
     }
 
     async function updateDashboard() {
         const btn = document.getElementById("updateBtn");
-        const tokenListEl = document.getElementById("tokenList");
-        const totalUsdEl = document.getElementById("totalUsd");
+        const gridEl = document.getElementById("walletsGrid");
+        const grandTotalEl = document.getElementById("grandTotalUsd");
 
         btn.disabled = true;
-        btn.innerText = "Đang đồng bộ từ Ronin...";
+        btn.innerText = "Đang đồng bộ dữ liệu...";
+        gridEl.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">Đang quét blockchain cho tất cả các ví...</div>`;
 
         try {
             const prices = await getTokenPrices();
-            let totalWalletUsd = 0;
-            let htmlContent = "";
+            let totalDashboardUsd = 0;
+            let gridHtml = "";
 
-            for (let token of tokensConfig) {
-                let balance = 0n;
+            // Duyệt qua từng ví trong mảng danh sách
+            for (let wallet of wallets) {
+                let walletTotalUsd = 0;
+                let tokenRowsHtml = "";
 
-                if (token.isNative) {
-                    balance = await provider.getBalance(walletAddress);
-                } else {
-                    try {
-                        const contract = new ethers.Contract(token.address, minERC20Abi, provider);
-                        balance = await contract.balanceOf(walletAddress);
-                    } catch (err) {
-                        console.error(`Lỗi đọc contract ${token.symbol}:`, err);
+                // Quét từng token trong ví này
+                for (let token of tokensConfig) {
+                    let balance = 0n;
+
+                    if (token.isNative) {
+                        balance = await provider.getBalance(wallet.address).catch(() => 0n);
+                    } else {
+                        try {
+                            const contract = new ethers.Contract(token.address, minERC20Abi, provider);
+                            balance = await contract.balanceOf(wallet.address);
+                        } catch (err) {
+                            balance = 0n;
+                        }
+                    }
+
+                    const formattedBalance = parseFloat(ethers.formatUnits(balance, token.decimals));
+                    
+                    // Chỉ hiển thị token trong thẻ ví nếu số dư thực tế > 0 để giao diện gọn gàng
+                    if (formattedBalance > 0) {
+                        const tokenPrice = prices[token.symbol] || 0;
+                        const usdValue = formattedBalance * tokenPrice;
+                        walletTotalUsd += usdValue;
+
+                        tokenRowsHtml += `
+                            <div class="token-row">
+                                <span class="token-symbol">${token.symbol}</span>
+                                <div class="token-amount">
+                                    <div>${formattedBalance.toLocaleString('en-US', {maximumFractionDigits: 6})}</div>
+                                    <div class="token-usd">$${usdValue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                                </div>
+                            </div>
+                        `;
                     }
                 }
 
-                const formattedBalance = parseFloat(ethers.formatUnits(balance, token.decimals));
-                const tokenPrice = prices[token.symbol] || 0;
-                const valueInUsd = formattedBalance * tokenPrice;
+                // Nếu ví không có token nào > 0
+                if (tokenRowsHtml === "") {
+                    tokenRowsHtml = `<div class="no-tokens">Ví này không chứa token nào.</div>`;
+                }
 
-                totalWalletUsd += valueInUsd;
-                
-                // Xác định class CSS nếu số dư = 0 để làm mờ UI
-                const emptyClass = formattedBalance === 0 ? "empty" : "";
+                // Cộng dồn vào tổng lớn của cả Dashboard
+                totalDashboardUsd += walletTotalUsd;
 
-                // Hiển thị tất cả token, giúp bạn kiểm chứng WETH đã được quét
-                htmlContent += `
-                    <div class="token-row ${emptyClass}">
-                        <div class="token-info">
-                            <span class="token-name">${token.symbol}</span>
-                            <span class="token-price">$${tokenPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 5})}</span>
-                        </div>
-                        <div class="token-balance">
-                            <div class="balance-crypto">${formattedBalance.toLocaleString('en-US', {maximumFractionDigits: 6})}</div>
-                            <div class="balance-usd">$${valueInUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                // Cắt bớt hiển thị địa chỉ ví cho đẹp UI (Ví dụ: 0x39fa...cde7)
+                const shortAddr = wallet.address.substring(0,6) + "..." + wallet.address.substring(wallet.address.length - 4);
+
+                // Tạo chuỗi HTML cho thẻ ví này
+                gridHtml += `
+                    <div class="wallet-card">
+                        <div class="wallet-name">${wallet.name}</div>
+                        <div class="wallet-address" title="${wallet.address}">${shortAddr}</div>
+                        <div class="wallet-subtotal">$${walletTotalUsd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                        <div class="token-list">
+                            ${tokenRowsHtml}
                         </div>
                     </div>
                 `;
             }
 
-            tokenListEl.innerHTML = htmlContent;
-            totalUsdEl.innerText = "$" + totalWalletUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            // Đẩy dữ liệu ra giao diện màn hình
+            gridEl.innerHTML = gridHtml;
+            grandTotalEl.innerText = "$" + totalDashboardUsd.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
         } catch (error) {
-            console.error("Lỗi hệ thống:", error);
-            tokenListEl.innerHTML = `<div style="text-align: center; color: #f6465d; padding: 20px;">Lỗi kết nối RPC Ronin. Vui lòng thử lại!</div>`;
+            console.error("Lỗi Dashboard:", error);
+            gridEl.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #f6465d;">Đã xảy ra lỗi hệ thống khi kết nối RPC. Vui lòng thử lại!</div>`;
         } finally {
             btn.disabled = false;
-            btn.innerText = "Cập nhật số dư";
+            btn.innerText = "Đồng bộ tất cả ví";
         }
     }
 
+    // Tự động kích hoạt khi tải trang
     window.onload = updateDashboard;
 </script>
 
