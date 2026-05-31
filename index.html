@@ -252,18 +252,22 @@
     // Cấu hình GraphQL API qua máy chủ Proxy để vượt tường lửa CORS
 const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
 
-    // 1. Hàm lấy điểm Bounty cho từng ví
+    // 1. Hàm lấy điểm Bounty cho từng ví (Đã cập nhật chuẩn API thực tế)
     async function fetchBountyPoints(address) {
-        // Chuyển 0x thành ronin: để gọi API của App.Axie
-        const roninAddress = address.replace("0x", "ronin:");
-        
+        // Mã Token xác thực bạn vừa lấy được
+        const authToken = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U";
+
         const graphqlQuery = {
-            operationName: "GetCodexProfile", 
-            variables: { roninAddress: roninAddress },
+            operationName: "GetCodexCurrentUserProgresses",
+            variables: { 
+                userAddress: address // Dùng thẳng địa chỉ 0x
+            },
+            // Tôi đã rút gọn truy vấn, chỉ lấy đúng số điểm Codex/Bounty để web chạy nhanh hơn
             query: `
-                query GetCodexProfile($roninAddress: String!) {
-                    codexProfile(roninAddress: $roninAddress) {
-                        bountyPoints
+                query GetCodexCurrentUserProgresses($userAddress: String!) {
+                    codexCurrentUserProgresses(userAddress: $userAddress) {
+                        codexPoints
+                        accumulatedCodexPoints
                     }
                 }
             `
@@ -272,13 +276,19 @@ const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
         try {
             const response = await fetch(graphqlUrl, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": authToken // Gửi kèm chìa khóa vào đây
+                },
                 body: JSON.stringify(graphqlQuery)
             });
             const data = await response.json();
             
             if (data.errors) return "Lỗi API";
-            return data.data?.codexProfile?.bountyPoints ?? 0;
+            
+            // Lấy ra số điểm (codexPoints)
+            return data.data?.codexCurrentUserProgresses?.codexPoints ?? 0;
+            
         } catch (error) {
             console.error(`Lỗi lấy BP cho ${address}:`, error);
             return "Lỗi Mạng";
