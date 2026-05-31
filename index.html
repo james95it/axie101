@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axie Ultimate Bounty Dashboard</title>
+    <title>Axie Master Dashboard</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -19,26 +19,28 @@
         }
         .dashboard-title {
             color: #f0b90b;
-            font-size: 26px;
+            font-size: 28px;
             margin-bottom: 10px;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .wallets-list {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 20px;
-            max-width: 1200px;
+            gap: 25px;
+            max-width: 1300px;
             margin: 0 auto;
         }
         .wallet-card {
             background-color: #181a20;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             border: 1px solid #232830;
             width: 100%;
-            max-width: 350px;
+            max-width: 360px;
             display: flex;
             flex-direction: column;
             transition: transform 0.2s, border-color 0.2s;
@@ -48,10 +50,10 @@
             border-color: #00c2ff;
         }
         .wallet-name {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             color: #00c2ff;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             text-align: center;
         }
         .wallet-address {
@@ -59,12 +61,51 @@
             font-size: 13px;
             color: #929aa5;
             background-color: #2b3139;
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-radius: 6px;
             word-break: break-all;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: center;
         }
+        
+        /* Khu vực Tài sản */
+        .assets-section {
+            background-color: #1e2329;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            font-size: 12px;
+            color: #929aa5;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #2b3139;
+            padding-bottom: 5px;
+        }
+        .asset-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .asset-item:last-child {
+            margin-bottom: 0;
+        }
+        .asset-name {
+            font-weight: bold;
+        }
+        .slp-text { color: #ffa3ce; }
+        .axs-text { color: #0055d4; }
+        .ron-text { color: #1e88e5; }
+        .asset-value {
+            font-family: monospace;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        /* Khu vực Bounty */
         .bounty-badge {
             background-color: rgba(240, 185, 11, 0.1);
             color: #f0b90b;
@@ -72,24 +113,23 @@
             padding: 12px;
             border-radius: 8px;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
-            gap: 5px;
         }
-        .bounty-badge span.label {
-            font-size: 13px;
-            color: #929aa5;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .bounty-info {
+            display: flex;
+            flex-direction: column;
         }
         .bounty-value {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
         }
         .bounty-rank {
-            font-size: 14px;
+            font-size: 13px;
             color: #eaecef;
+            margin-top: 3px;
         }
+        
         button {
             background-color: #00c2ff;
             color: #000;
@@ -104,127 +144,175 @@
         button:hover {
             opacity: 0.9;
         }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            color: #999;
+        }
     </style>
 </head>
 <body>
 
 <div class="dashboard-header">
-    <div class="dashboard-title">Hệ Thống Theo Dõi Nhiệm Vụ Tuần</div>
-    <button onclick="updateDashboard()" id="refreshBtn">Làm mới dữ liệu</button>
+    <div class="dashboard-title">Trạm Quản Lý Axie Tổng Hợp</div>
+    <button onclick="updateDashboard()" id="refreshBtn">Cập nhật toàn bộ</button>
 </div>
 
 <div class="wallets-list" id="walletsList">
-    <!-- Thẻ ví sẽ được tạo tự động bằng Javascript -->
+    <!-- Giao diện ví sẽ tự động sinh ra tại đây -->
 </div>
 
 <script>
+    // --- CẤU HÌNH API ---
     const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
+    const roninRpcUrl = "https://api.roninchain.com/rpc"; // Cổng đọc blockchain Ronin
+    
+    // Contract của Token trên mạng Ronin
+    const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
+    const AXS_CONTRACT = "0x97a9107c1793bc408eaa158ceb5a836eb15091a1";
 
     // ==========================================
-    // KHU VỰC CẤU HÌNH VÍ CỦA BẠN
+    // KHU VỰC DANH SÁCH VÍ CỦA BẠN (Cứ thêm tiếp theo mẫu nếu có nhiều hơn)
     // ==========================================
     const wallets = [
         { 
             name: "Momo", 
             address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a",
-            // Dán toàn bộ mã token dài ngoằng của ví 1 vào giữa cặp ngoặc kép này
             token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U" 
         },
         { 
             name: "James1", 
             address: "0x39fac7a74365c188c293bd9a064323b50e63cde7",
-            // Đăng nhập ví 2, lấy token mới và dán vào đây
             token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjVmMGMyLWVhZTItNmYwOS04YTY0LTQ3Yjk3MzExODU2NiIsInNpZCI6MjQwNjkyMjg5LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4MzlmYWM3YTc0MzY1YzE4OGMyOTNiZDlhMDY0MzIzYjUwZTYzY2RlNyIsImV4cCI6MTc4MTQxNjM4NCwiaWF0IjoxNzgwMjA2Nzg0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY1ZjBjMi1lYWUyLTZmMDktOGE2NC00N2I5NzMxMTg1NjYifQ.c7_w-BJwZl_63qnO_GWNm64Aga6eeIS_fgUec2g3tro" 
-        },
-        { 
-            name: "Ví Phụ (Acc 3)", 
-            address: "0x_ĐỊA_CHỈ_VÍ_3_CỦA_BẠN",
-            // Đăng nhập ví 3, lấy token mới và dán vào đây
-            token: "Bearer ĐOẠN_MÃ_TOKEN_VÍ_3" 
         }
     ];
 
-    // Hàm lấy dữ liệu cho từng ví
+    // --- 1. HÀM LẤY TÀI SẢN (RON, SLP, AXS) TRỰC TIẾP TỪ BLOCKCHAIN ---
+    async function fetchAssets(address) {
+        try {
+            // Chuyển ví về chuẩn 32 byte để truy vấn Contract
+            const cleanAddress = address.toLowerCase().replace("0x", "");
+            const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress;
+
+            // Gửi 3 yêu cầu cùng lúc (RON, SLP, AXS) để web load nhanh hơn
+            const [ronRes, slpRes, axsRes] = await Promise.all([
+                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }),
+                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }),
+                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3}) })
+            ]);
+
+            const ronData = await ronRes.json();
+            const slpData = await slpRes.json();
+            const axsData = await axsRes.json();
+
+            // Tính toán giá trị dựa trên số thập phân (Decimals)
+            const ron = ronData.result && ronData.result !== "0x" ? (parseInt(ronData.result, 16) / 1e18).toFixed(3) : 0;
+            const slp = slpData.result && slpData.result !== "0x" ? parseInt(slpData.result, 16) : 0; // SLP không có số thập phân hiển thị
+            const axs = axsData.result && axsData.result !== "0x" ? (parseInt(axsData.result, 16) / 1e18).toFixed(3) : 0;
+
+            return { ron, slp, axs };
+        } catch (error) {
+            console.error(`Lỗi tải tài sản cho ${address}:`, error);
+            return { ron: "Lỗi", slp: "Lỗi", axs: "Lỗi" };
+        }
+    }
+
+    // --- 2. HÀM LẤY ĐIỂM BOUNTY VÀ RANK ---
     async function fetchBountyData(address, authToken) {
+        if(!authToken || authToken.includes("ĐOẠN_MÃ_TOKEN")) return { bp: "Thiếu Token", rank: "---" };
+
         const rawBody = JSON.stringify({
             operationName: "GetQuestsSeasonStatsAndUserRank",
-            variables: { 
-                user: address, 
-                includeUserRank: true, 
-                leaderboardType: "WeeklyPremierQuestPoints" 
-            },
+            variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
             query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n`
         });
 
         try {
             const response = await fetch(graphqlUrl, {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json",
-                    "Authorization": authToken // Sử dụng token truyền vào từ danh sách
-                },
+                headers: { "Content-Type": "application/json", "Authorization": authToken },
                 body: rawBody
             });
             const data = await response.json();
             
-            if (data.errors) return { bp: "Lỗi Token", rank: "---" };
+            if (data.errors) return { bp: "Sai Token", rank: "---" };
             
             const userData = data.data?.userLeaderboardRank;
-            if (userData) {
-                return { bp: userData.score ?? 0, rank: userData.rank ?? "Chưa xếp hạng" };
-            }
-            
-            return { bp: 0, rank: "Chưa xếp hạng" };
-            
+            return userData 
+                ? { bp: userData.score ?? 0, rank: userData.rank ?? "Chưa có" }
+                : { bp: 0, rank: "Chưa xếp hạng" };
         } catch (error) {
             return { bp: "Lỗi mạng", rank: "Lỗi mạng" };
         }
     }
 
-    // Hàm cập nhật toàn bộ giao diện
+    // --- 3. HÀM ĐIỀU KHIỂN & HIỂN THỊ GIAO DIỆN ---
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
         
-        btn.innerText = "Đang tải...";
+        btn.innerText = "Đang lấy dữ liệu...";
         btn.disabled = true;
         listEl.innerHTML = "";
 
         for (const wallet of wallets) {
-            // Tạo khung thẻ tĩnh trước
+            // Bước 1: Tạo khung hiển thị "Đang tải"
             const card = document.createElement("div");
             card.className = "wallet-card";
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
                 <div class="wallet-address">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
+                
+                <div class="assets-section">
+                    <div class="section-title">Tài sản ví</div>
+                    <div class="asset-item"><span class="asset-name ron-text">RON</span><span class="asset-value">...</span></div>
+                    <div class="asset-item"><span class="asset-name slp-text">SLP</span><span class="asset-value">...</span></div>
+                    <div class="asset-item"><span class="asset-name axs-text">AXS</span><span class="asset-value">...</span></div>
+                </div>
+
                 <div class="bounty-badge">
-                    <span class="label">Điểm & Thứ Hạng</span>
-                    <span class="bounty-value">...</span>
-                    <span class="bounty-rank">Đang lấy dữ liệu</span>
+                    <div class="bounty-info">
+                        <span class="section-title" style="border:none; margin:0; padding:0; color:#f0b90b;">Điểm Nhiệm Vụ</span>
+                        <span class="bounty-rank">Rank: ...</span>
+                    </div>
+                    <span class="bounty-value">... BP</span>
                 </div>
             `;
             listEl.appendChild(card);
 
-            // Chờ API trả kết quả về (truyền vào cả địa chỉ VÀ mã token của ví đó)
-            const bountyData = await fetchBountyData(wallet.address, wallet.token);
+            // Bước 2: Tải đồng thời cả Dữ liệu Tài sản và Dữ liệu Bounty
+            const [assets, bountyData] = await Promise.all([
+                fetchAssets(wallet.address),
+                fetchBountyData(wallet.address, wallet.token)
+            ]);
 
-            // Ghi đè dữ liệu thật lên thẻ
+            // Bước 3: Đổ dữ liệu thật lên thẻ
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
                 <div class="wallet-address" title="${wallet.address}">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
+                
+                <div class="assets-section">
+                    <div class="section-title">Tài sản ví</div>
+                    <div class="asset-item"><span class="asset-name ron-text">RON</span><span class="asset-value">${assets.ron}</span></div>
+                    <div class="asset-item"><span class="asset-name slp-text">SLP</span><span class="asset-value">${assets.slp}</span></div>
+                    <div class="asset-item"><span class="asset-name axs-text">AXS</span><span class="asset-value">${assets.axs}</span></div>
+                </div>
+
                 <div class="bounty-badge">
-                    <span class="label">Điểm & Thứ Hạng</span>
-                    <span class="bounty-value">${bountyData.bp} BP</span>
-                    <span class="bounty-rank">Rank: ${bountyData.rank}</span>
+                    <div class="bounty-info">
+                        <span class="section-title" style="border:none; margin:0; padding:0; color:#f0b90b;">Điểm Nhiệm Vụ</span>
+                        <span class="bounty-rank">Hạng: ${bountyData.rank}</span>
+                    </div>
+                    <span class="bounty-value">${bountyData.bp}</span>
                 </div>
             `;
         }
 
-        btn.innerText = "Làm mới dữ liệu";
+        btn.innerText = "Cập nhật toàn bộ";
         btn.disabled = false;
     }
 
-    // Tự động chạy khi vừa mở file
+    // Tự động load khi mở trang web
     window.onload = updateDashboard;
 </script>
 
