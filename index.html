@@ -83,26 +83,52 @@
             margin-bottom: 10px;
             border-bottom: 1px solid #2b3139;
             padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
         }
         .asset-item {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 8px;
             font-size: 15px;
         }
         .asset-item:last-child {
             margin-bottom: 0;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #3a414a;
+        }
+        .total-usd-item {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            color: #0dbb72;
         }
         .asset-name {
             font-weight: bold;
+            width: 50px;
         }
         .slp-text { color: #ffa3ce; }
         .axs-text { color: #0055d4; }
         .ron-text { color: #1e88e5; }
+        .weth-text { color: #9c9c9c; }
+        
+        .asset-numbers {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
         .asset-value {
             font-family: monospace;
-            font-size: 16px;
+            font-size: 15px;
             color: #fff;
+        }
+        .usd-value {
+            font-family: monospace;
+            font-size: 12px;
+            color: #929aa5;
         }
 
         /* Khu vực Bounty */
@@ -159,20 +185,20 @@
 </div>
 
 <div class="wallets-list" id="walletsList">
-    <!-- Giao diện ví sẽ tự động sinh ra tại đây -->
-</div>
+    </div>
 
 <script>
     // --- CẤU HÌNH API ---
     const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
-    const roninRpcUrl = "https://api.roninchain.com/rpc"; // Cổng đọc blockchain Ronin
+    const roninRpcUrl = "https://api.roninchain.com/rpc"; 
     
-    // Contract của Token trên mạng Ronin
+    // Hợp đồng Token mạng Ronin
     const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
     const AXS_CONTRACT = "0x97a9107c1793bc408eaa158ceb5a836eb15091a1";
+    const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
 
     // ==========================================
-    // KHU VỰC DANH SÁCH VÍ CỦA BẠN (Cứ thêm tiếp theo mẫu nếu có nhiều hơn)
+    // KHU VỰC DANH SÁCH VÍ CỦA BẠN 
     // ==========================================
     const wallets = [
         { 
@@ -187,37 +213,53 @@
         }
     ];
 
-    // --- 1. HÀM LẤY TÀI SẢN (RON, SLP, AXS) TRỰC TIẾP TỪ BLOCKCHAIN ---
+    // --- 1. LẤY TỶ GIÁ TỪ COINGECKO ---
+    async function fetchLivePrices() {
+        try {
+            const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ronin,smooth-love-potion,axie-infinity,ethereum&vs_currencies=usd");
+            const data = await res.json();
+            return {
+                ron: data['ronin']?.usd || 0,
+                slp: data['smooth-love-potion']?.usd || 0,
+                axs: data['axie-infinity']?.usd || 0,
+                weth: data['ethereum']?.usd || 0 // Dùng giá ETH cho WETH
+            };
+        } catch (error) {
+            console.error("Lỗi lấy giá:", error);
+            return { ron: 0, slp: 0, axs: 0, weth: 0 }; // Trả về 0 nếu API lỗi
+        }
+    }
+
+    // --- 2. LẤY TÀI SẢN (RON, SLP, AXS, WETH) ---
     async function fetchAssets(address) {
         try {
-            // Chuyển ví về chuẩn 32 byte để truy vấn Contract
             const cleanAddress = address.toLowerCase().replace("0x", "");
             const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress;
 
-            // Gửi 3 yêu cầu cùng lúc (RON, SLP, AXS) để web load nhanh hơn
-            const [ronRes, slpRes, axsRes] = await Promise.all([
+            const [ronRes, slpRes, axsRes, wethRes] = await Promise.all([
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }),
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }),
-                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3}) })
+                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3}) }),
+                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4}) })
             ]);
 
             const ronData = await ronRes.json();
             const slpData = await slpRes.json();
             const axsData = await axsRes.json();
+            const wethData = await wethRes.json();
 
-            // Tính toán giá trị dựa trên số thập phân (Decimals)
-            const ron = ronData.result && ronData.result !== "0x" ? (parseInt(ronData.result, 16) / 1e18).toFixed(3) : 0;
-            const slp = slpData.result && slpData.result !== "0x" ? parseInt(slpData.result, 16) : 0; // SLP không có số thập phân hiển thị
-            const axs = axsData.result && axsData.result !== "0x" ? (parseInt(axsData.result, 16) / 1e18).toFixed(3) : 0;
+            const ron = ronData.result && ronData.result !== "0x" ? (parseInt(ronData.result, 16) / 1e18) : 0;
+            const slp = slpData.result && slpData.result !== "0x" ? parseInt(slpData.result, 16) : 0;
+            const axs = axsData.result && axsData.result !== "0x" ? (parseInt(axsData.result, 16) / 1e18) : 0;
+            const weth = wethData.result && wethData.result !== "0x" ? (parseInt(wethData.result, 16) / 1e18) : 0;
 
-            return { ron, slp, axs };
+            return { ron, slp, axs, weth };
         } catch (error) {
-            console.error(`Lỗi tải tài sản cho ${address}:`, error);
-            return { ron: "Lỗi", slp: "Lỗi", axs: "Lỗi" };
+            return { ron: 0, slp: 0, axs: 0, weth: 0 };
         }
     }
 
-    // --- 2. HÀM LẤY ĐIỂM BOUNTY VÀ RANK ---
+    // --- 3. LẤY ĐIỂM BOUNTY VÀ RANK ---
     async function fetchBountyData(address, authToken) {
         if(!authToken || authToken.includes("ĐOẠN_MÃ_TOKEN")) return { bp: "Thiếu Token", rank: "---" };
 
@@ -246,7 +288,7 @@
         }
     }
 
-    // --- 3. HÀM ĐIỀU KHIỂN & HIỂN THỊ GIAO DIỆN ---
+    // --- 4. CẬP NHẬT GIAO DIỆN ---
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
@@ -255,8 +297,10 @@
         btn.disabled = true;
         listEl.innerHTML = "";
 
+        // Lấy tỷ giá USD một lần duy nhất lúc bắt đầu để web chạy nhanh
+        const prices = await fetchLivePrices();
+
         for (const wallet of wallets) {
-            // Bước 1: Tạo khung hiển thị "Đang tải"
             const card = document.createElement("div");
             card.className = "wallet-card";
             card.innerHTML = `
@@ -264,38 +308,68 @@
                 <div class="wallet-address">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
                 
                 <div class="assets-section">
-                    <div class="section-title">Tài sản ví</div>
-                    <div class="asset-item"><span class="asset-name ron-text">RON</span><span class="asset-value">...</span></div>
-                    <div class="asset-item"><span class="asset-name slp-text">SLP</span><span class="asset-value">...</span></div>
-                    <div class="asset-item"><span class="asset-name axs-text">AXS</span><span class="asset-value">...</span></div>
-                </div>
-
-                <div class="bounty-badge">
-                    <div class="bounty-info">
-                        <span class="section-title" style="border:none; margin:0; padding:0; color:#f0b90b;">Điểm Nhiệm Vụ</span>
-                        <span class="bounty-rank">Rank: ...</span>
-                    </div>
-                    <span class="bounty-value">... BP</span>
+                    <div class="section-title"><span>Tài sản ví</span></div>
+                    <div style="text-align:center; padding:10px 0; color:#929aa5;">Đang tải...</div>
                 </div>
             `;
             listEl.appendChild(card);
 
-            // Bước 2: Tải đồng thời cả Dữ liệu Tài sản và Dữ liệu Bounty
             const [assets, bountyData] = await Promise.all([
                 fetchAssets(wallet.address),
                 fetchBountyData(wallet.address, wallet.token)
             ]);
 
-            // Bước 3: Đổ dữ liệu thật lên thẻ
+            // Tính toán giá trị ra USD
+            const ronUsd = assets.ron * prices.ron;
+            const slpUsd = assets.slp * prices.slp;
+            const axsUsd = assets.axs * prices.axs;
+            const wethUsd = assets.weth * prices.weth;
+            const totalUsd = ronUsd + slpUsd + axsUsd + wethUsd;
+
+            // In dữ liệu ra thẻ
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
                 <div class="wallet-address" title="${wallet.address}">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
                 
                 <div class="assets-section">
-                    <div class="section-title">Tài sản ví</div>
-                    <div class="asset-item"><span class="asset-name ron-text">RON</span><span class="asset-value">${assets.ron}</span></div>
-                    <div class="asset-item"><span class="asset-name slp-text">SLP</span><span class="asset-value">${assets.slp}</span></div>
-                    <div class="asset-item"><span class="asset-name axs-text">AXS</span><span class="asset-value">${assets.axs}</span></div>
+                    <div class="section-title"><span>Tài sản ví</span></div>
+                    
+                    <div class="asset-item">
+                        <span class="asset-name ron-text">RON</span>
+                        <div class="asset-numbers">
+                            <span class="asset-value">${assets.ron.toFixed(3)}</span>
+                            <span class="usd-value">~$${ronUsd.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="asset-item">
+                        <span class="asset-name slp-text">SLP</span>
+                        <div class="asset-numbers">
+                            <span class="asset-value">${assets.slp.toLocaleString()}</span>
+                            <span class="usd-value">~$${slpUsd.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="asset-item">
+                        <span class="asset-name axs-text">AXS</span>
+                        <div class="asset-numbers">
+                            <span class="asset-value">${assets.axs.toFixed(3)}</span>
+                            <span class="usd-value">~$${axsUsd.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div class="asset-item">
+                        <span class="asset-name weth-text">WETH</span>
+                        <div class="asset-numbers">
+                            <span class="asset-value">${assets.weth.toFixed(4)}</span>
+                            <span class="usd-value">~$${wethUsd.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div class="total-usd-item">
+                        <span>Tổng quy đổi:</span>
+                        <span>$${totalUsd.toFixed(2)}</span>
+                    </div>
                 </div>
 
                 <div class="bounty-badge">
@@ -312,7 +386,7 @@
         btn.disabled = false;
     }
 
-    // Tự động load khi mở trang web
+    // Chạy ngay khi tải xong file
     window.onload = updateDashboard;
 </script>
 
