@@ -252,42 +252,50 @@
     // Cấu hình GraphQL API qua máy chủ Proxy để vượt tường lửa CORS
 const graphqlUrl = "https://graphql-gateway.axieinfinity.com/graphql";
 
-    // 1. Hàm lấy điểm Bounty cho từng ví (Đã cập nhật chuẩn API thực tế)
+   // 1. Hàm lấy điểm Bounty cho từng ví (Nguyên bản 100% từ App Axie)
     async function fetchBountyPoints(address) {
-        // Mã Token xác thực bạn vừa lấy được
         const authToken = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U";
 
-        const graphqlQuery = {
+        // Sử dụng nguyên vẹn query bạn đã lấy được, chỉ biến đổi địa chỉ ví động theo vòng lặp
+        const rawBody = JSON.stringify({
             operationName: "GetCodexCurrentUserProgresses",
-            variables: { 
-                userAddress: address // Dùng thẳng địa chỉ 0x
-            },
-            // Tôi đã rút gọn truy vấn, chỉ lấy đúng số điểm Codex/Bounty để web chạy nhanh hơn
-            query: `
-                query GetCodexCurrentUserProgresses($userAddress: String!) {
-                    codexCurrentUserProgresses(userAddress: $userAddress) {
-                        codexPoints
-                        accumulatedCodexPoints
-                    }
-                }
-            `
-        };
+            variables: { userAddress: address },
+            query: `query GetCodexCurrentUserProgresses($userAddress: String!) {\n  codexCurrentUserProgresses(userAddress: $userAddress) {\n    ...CodexUserSeasonProgressFields\n    __typename\n  }\n}\n\nfragment CodexUserSeasonProgressFields on CodexUserSeasonProgress {\n  accumulatedCodexPoints\n  blockNumber\n  codexPoints\n  isProgressing\n  level\n  pathIndex\n  tier\n  userAddress\n  remainingExchangeableTickets\n  season {\n    pathId\n    contractAddress\n    name\n    description\n    __typename\n  }\n  milestoneRewards {\n    milestoneLevel\n    status\n    milestoneReward {\n      ...CodexMilestoneRewardFields\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment CodexMilestoneRewardFields on CodexMilestoneReward {\n  id\n  tier\n  rewardName\n  quantity\n  isOnchain\n  imageUrl\n  name\n  description\n  metadata {\n    ... on CodexErc1155Metadata {\n      tokenAddress\n      tokenId\n      rarity\n      __typename\n    }\n    ... on Buff {\n      id\n      name\n      description\n      imageUrl\n      source\n      __typename\n    }\n    ... on Item {\n      itemId\n      unit\n      __typename\n    }\n    ... on CodexLore {\n      itemId\n      segment\n      __typename\n    }\n    ... on CodexErc20Metadata {\n      tokenAddress\n      unit\n      __typename\n    }\n    ... on CodexUnit {\n      unit\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n`
+        });
 
         try {
             const response = await fetch(graphqlUrl, {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
-                    "Authorization": authToken // Gửi kèm chìa khóa vào đây
+                    "Authorization": authToken
                 },
-                body: JSON.stringify(graphqlQuery)
+                body: rawBody
             });
             const data = await response.json();
             
-            if (data.errors) return "Lỗi API";
+            // Xử lý nếu API trả về lỗi (Ví dụ: Sai token, Token không có quyền xem ví khác)
+            if (data.errors) {
+                console.error(`Chi tiết lỗi API của ví ${address}:`, data.errors);
+                
+                // Nếu báo lỗi cấm truy cập (Unauthorized / Forbidden)
+                if (data.errors[0]?.message?.toLowerCase().includes("unauthorized") || 
+                    data.errors[0]?.message?.toLowerCase().includes("forbidden") ||
+                    data.errors[0]?.extensions?.code === "UNAUTHENTICATED") {
+                    return "Sai Token/Không quyền";
+                }
+                return "Lỗi API";
+            }
             
-            // Lấy ra số điểm (codexPoints)
-            return data.data?.codexCurrentUserProgresses?.codexPoints ?? 0;
+            // Dữ liệu trả về là một mảng (Danh sách tiến trình theo mùa giải)
+            const progresses = data.data?.codexCurrentUserProgresses;
+            
+            if (progresses && progresses.length > 0) {
+                // Lấy điểm codexPoints của phần tử đầu tiên (thường là mùa hiện tại)
+                return progresses[0].codexPoints ?? 0;
+            }
+            
+            return 0; // Nếu mảng rỗng (Chưa chơi) thì điểm = 0
             
         } catch (error) {
             console.error(`Lỗi lấy BP cho ${address}:`, error);
