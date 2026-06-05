@@ -15,7 +15,7 @@
         }
         .dashboard-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         .dashboard-title {
             color: #f0b90b;
@@ -25,6 +25,42 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+        
+        /* CSS CHỈNH SỬA: Thêm giao diện cho Bảng Tổng Kết */
+        .summary-section {
+            background: linear-gradient(145deg, #1e2329, #181a20);
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 600px;
+            margin: 0 auto 30px auto;
+            text-align: center;
+            border: 1px solid #f0b90b;
+            box-shadow: 0 0 20px rgba(240, 185, 11, 0.05);
+            display: none; /* Ẩn khi chưa có dữ liệu */
+        }
+        .summary-title {
+            color: #929aa5;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+        .summary-value {
+            font-size: 46px;
+            font-weight: bold;
+            color: #0dbb72;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+        .summary-diff {
+            font-size: 16px;
+            color: #eaecef;
+            background-color: #0b0e11;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
         .wallets-list {
             display: flex;
             flex-wrap: wrap;
@@ -187,6 +223,14 @@
     <button onclick="updateDashboard()" id="refreshBtn">Cập nhật toàn bộ</button>
 </div>
 
+<div id="summarySection" class="summary-section">
+    <div class="summary-title">Tổng Tài Sản (Tất cả các ví)</div>
+    <div class="summary-value" id="grandTotalValue">$0.00</div>
+    <div class="summary-diff" id="grandTotalDiffContainer">
+        Chênh lệch từ Thứ 5: <span id="grandTotalDiffValue" class="text-gray">Đang tính toán...</span>
+    </div>
+</div>
+
 <div class="wallets-list" id="walletsList"></div>
 
 <script>
@@ -194,8 +238,8 @@
     const roninRpcUrl = "https://api.roninchain.com/rpc"; 
     
     const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
-    const AXS_CONTRACT = "0x97a9107c1793bc407d6f527b77e7fff4d812bece";
-    const STAKED_AXS_CONTRACT = "0x05b0bb3c1c320b280501b86706c3551995bc8571"; // Cập nhật: Thêm hợp đồng AXS đang Stake
+    const AXS_CONTRACT = "0x97a9107c1793bc407d6f527b77e7fff4d812bece"; 
+    const STAKED_AXS_CONTRACT = "0x05b0bb3c1c320b280501b86706c3551995bc8571"; 
     const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
 
     const wallets = [
@@ -304,7 +348,6 @@
         } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
     }
 
-    // Cập nhật: Hàm chuyển đổi chuẩn BigInt siêu chính xác chống tràn số
     function hexToDec(hexStr, decimals) {
         if (!hexStr || hexStr === "0x" || hexStr === "0x0") return 0;
         try {
@@ -317,7 +360,6 @@
             const cleanAddress = address.toLowerCase().replace("0x", "");
             const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress;
 
-            // Bổ sung: Gửi request lấy cả AXS thường và Staked AXS
             const [ronRes, slpRes, axsRes, wethRes, stakedAxsRes] = await Promise.all([
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }),
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }),
@@ -332,7 +374,6 @@
             const wethData = await wethRes.json();
             const stakedAxsData = await stakedAxsRes.json();
 
-            // Tính tổng AXS (Có sẵn + Đang Stake)
             const totalAxs = hexToDec(axsData.result, 18) + hexToDec(stakedAxsData.result, 18);
 
             return {
@@ -345,7 +386,7 @@
     }
 
     async function fetchBountyData(address, authToken) {
-        if(!authToken) return { bp: "Thiếu Token", rank: "---" };
+        if(!authToken) return { bp: "---", rank: "---" };
         const rawBody = JSON.stringify({
             operationName: "GetQuestsSeasonStatsAndUserRank",
             variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
@@ -363,10 +404,21 @@
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
+        const summarySection = document.getElementById("summarySection");
+        const grandTotalValueEl = document.getElementById("grandTotalValue");
+        const grandTotalDiffValueEl = document.getElementById("grandTotalDiffValue");
         
         btn.innerText = "Đang lấy dữ liệu...";
         btn.disabled = true;
         listEl.innerHTML = "";
+        
+        // Tạm ẩn bảng tổng kết khi đang tải
+        summarySection.style.display = "none";
+
+        // Biến tính tổng
+        let grandTotalUsd = 0;
+        let grandTotalDiffUsd = 0;
+        let hasAtLeastOneDiffData = false;
 
         const prices = await fetchLivePrices();
 
@@ -381,6 +433,7 @@
             ]);
 
             const totalUsd = (assets.ron * prices.ron) + (assets.slp * prices.slp) + (assets.axs * prices.axs) + (assets.weth * prices.weth);
+            grandTotalUsd += totalUsd; // Cộng dồn vào biến tổng
 
             const diffStats = processFarmingDiff(wallet.address, assets);
             let diffHtml = "";
@@ -388,7 +441,10 @@
             if (!diffStats) {
                 diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu tuần trước để so sánh.<br>Hệ thống đã lưu mốc hôm nay.</div></div>`;
             } else {
+                hasAtLeastOneDiffData = true;
                 const diffUsd = (diffStats.ron * prices.ron) + (diffStats.slp * prices.slp) + (diffStats.axs * prices.axs) + (diffStats.weth * prices.weth);
+                grandTotalDiffUsd += diffUsd; // Cộng dồn chênh lệch vào biến tổng
+
                 const diffUsdClass = diffUsd > 0 ? "text-green" : (diffUsd < 0 ? "text-red" : "");
                 const diffUsdSign = diffUsd > 0 ? "+" : "";
 
@@ -467,6 +523,23 @@
                 </div>
             `;
         }
+
+        // --- CODE MỚI: Cập nhật giao diện Bảng Tổng Kết ---
+        grandTotalValueEl.innerText = `$${grandTotalUsd.toFixed(2)}`;
+        
+        if (!hasAtLeastOneDiffData) {
+            grandTotalDiffValueEl.className = "text-gray";
+            grandTotalDiffValueEl.innerText = "Chưa đủ dữ liệu tuần trước";
+        } else {
+            const grandSign = grandTotalDiffUsd > 0 ? "+" : "";
+            const grandClass = grandTotalDiffUsd > 0 ? "text-green" : (grandTotalDiffUsd < 0 ? "text-red" : "text-gray");
+            grandTotalDiffValueEl.className = grandClass;
+            grandTotalDiffValueEl.style.fontWeight = "bold";
+            grandTotalDiffValueEl.style.fontFamily = "monospace";
+            grandTotalDiffValueEl.innerText = `${grandSign}$${grandTotalDiffUsd.toFixed(2)}`;
+        }
+        
+        summarySection.style.display = "block"; // Hiện bảng tổng kết sau khi load xong
 
         btn.innerText = "Cập nhật toàn bộ";
         btn.disabled = false;
