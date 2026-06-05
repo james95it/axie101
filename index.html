@@ -26,17 +26,16 @@
             letter-spacing: 1px;
         }
         
-        /* CSS CHỈNH SỬA: Thêm giao diện cho Bảng Tổng Kết */
         .summary-section {
             background: linear-gradient(145deg, #1e2329, #181a20);
             border-radius: 15px;
             padding: 25px;
             max-width: 600px;
-            margin: 0 auto 30px auto;
+            margin: 0 auto 20px auto;
             text-align: center;
             border: 1px solid #f0b90b;
             box-shadow: 0 0 20px rgba(240, 185, 11, 0.05);
-            display: none; /* Ẩn khi chưa có dữ liệu */
+            display: none; 
         }
         .summary-title {
             color: #929aa5;
@@ -59,6 +58,21 @@
             padding: 10px 20px;
             border-radius: 8px;
             display: inline-block;
+        }
+
+        .warning-section {
+            background: rgba(246, 70, 93, 0.1);
+            border: 1px solid rgba(246, 70, 93, 0.4);
+            color: #f6465d;
+            border-radius: 12px;
+            padding: 15px 20px;
+            max-width: 600px;
+            margin: 0 auto 30px auto;
+            text-align: center;
+            display: none;
+            font-size: 15px;
+            line-height: 1.5;
+            box-shadow: 0 0 15px rgba(246, 70, 93, 0.1);
         }
 
         .wallets-list {
@@ -194,6 +208,15 @@
             padding: 12px;
             border-radius: 8px;
             display: flex;
+            flex-direction: column;
+        }
+        .bounty-badge.warning-badge {
+            background-color: rgba(246, 70, 93, 0.1);
+            color: #f6465d;
+            border-color: rgba(246, 70, 93, 0.4);
+        }
+        .bounty-main {
+            display: flex;
             justify-content: space-between;
             align-items: center;
         }
@@ -231,6 +254,8 @@
     </div>
 </div>
 
+<div id="warningSection" class="warning-section"></div>
+
 <div class="wallets-list" id="walletsList"></div>
 
 <script>
@@ -243,48 +268,49 @@
     const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
 
     const wallets = [
-        { 
-            name: "Momo", 
-            address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U" 
-        },
-        { 
-            name: "James1", 
-            address: "0x39fac7a74365c188c293bd9a064323b50e63cde7",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjVmMGMyLWVhZTItNmYwOS04YTY0LTQ3Yjk3MzExODU2NiIsInNpZCI6MjQwNjkyMjg5LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4MzlmYWM3YTc0MzY1YzE4OGMyOTNiZDlhMDY0MzIzYjUwZTYzY2RlNyIsImV4cCI6MTc4MTQxNjM4NCwiaWF0IjoxNzgwMjA2Nzg0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY1ZjBjMi1lYWUyLTZmMDktOGE2NC00N2I5NzMxMTg1NjYifQ.c7_w-BJwZl_63qnO_GWNm64Aga6eeIS_fgUec2g3tro" 
-        },
-        { 
-            name: "Crysite", 
-            address: "0xe9add5b325d2b7f869b3a3c7b1047600a76192f7",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmU1NmM3LTRlNDktNjI4YS1iYmI3LWY5YWVjMTVmZGM5MCIsInNpZCI6MjQwNjkyNjA1LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4ZTlhZGQ1YjMyNWQyYjdmODY5YjNhM2M3YjEwNDc2MDBhNzYxOTJmNyIsImV4cCI6MTc4MTQxOTMwNiwiaWF0IjoxNzgwMjA5NzA2LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZlNTZjNy00ZTQ5LTYyOGEtYmJiNy1mOWFlYzE1ZmRjOTAifQ.YHWrwCmbEaSciDw2EjSiNOt1to-2NClZVnqX0mC1FPE" 
-        },
-        { 
-            name: "Cody", 
-            address: "0x9b3bc1c03e5a8889e893e54950a7c31c11301b79",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIzNTMzLWJiZmItNjM1NS1hN2IyLTA5NmE0MTM4ZmI5OCIsInNpZCI6MjM5ODUzNDMyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4OWIzYmMxYzAzZTVhODg4OWU4OTNlNTQ5NTBhN2MzMWMxMTMwMWI3OSIsImV4cCI6MTc4MTQ1NTMxOSwiaWF0IjoxNzgwMjQ1NzE5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMzUzMy1iYmZiLTYzNTUtYTdiMi0wOTZhNDEzOGZiOTgifQ.SetL7JWU_M0bUiQSd2wTwyFc9oZ0505EGh8Kd5Iobyk" 
-        },
-         { 
-            name: "Randy", 
-            address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjY2MWVjLWI5OGItNmE4NS1hNDIwLWYyNDZkMTc4NWYwYSIsInNpZCI6MjQwNjk2NDk2LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2NhNmIzYTVkOWVjMGJhMmJhMDAyOThhYTY3Yjc2OGQ5YmJmN2UwMSIsImV4cCI6MTc4MTQ1NTYzOSwiaWF0IjoxNzgwMjQ2MDM5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY2NjFlYy1iOThiLTZhODUtYTQyMC1mMjQ2ZDE3ODVmMGEifQ.fV0mBq-F753oUD67fWwCVqbe5ybm-HbIkXTgxCCkH-c" 
-        },
-          { 
-            name: "Omi", 
-            address: "0x92b626df33ba8bf0d3abd7297e48e5e48e1be030",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCIsInNpZCI6MjM5NjA2MTgyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsIm9pZCI6MjQ3ODUxNCwicm9uaW5BZGRyZXNzIjoiMHg5MmI2MjZkZjMzYmE4YmYwZDNhYmQ3Mjk3ZTQ4ZTVlNDhlMWJlMDMwIiwiZXRoIjoiMHg4YTQyZTY0MDVhMjUzZDIzMDNiNzk3YWJiMGIxNjJkMTFmN2RkYzg5IiwiZXhwIjoxNzgxNDE1OTczLCJpYXQiOjE3ODAyMDYzNzMsImlzcyI6IkF4aWVJbmZpbml0eSIsInN1YiI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCJ9.5hGkzWQhBfB5k7tQ58b1H_xTyTUAJKtjEI6Lnoput1E" 
-        },
-        { 
-            name: "Pokemon", 
-            address: "0x374ef4e2154a37ee4fa27b30a173f2f68978c740",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmY1MWJjLTBkMjMtNjA2MS1hNTRhLTliY2QzYjA0ZGNiMSIsInNpZCI6MjQwNjk2NTYzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4Mzc0ZWY0ZTIxNTRhMzdlZTRmYTI3YjMwYTE3M2YyZjY4OTc4Yzc0MCIsImV4cCI6MTc4MTQ1NjM0MywiaWF0IjoxNzgwMjQ2NzQzLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZmNTFiYy0wZDIzLTYwNjEtYTU0YS05YmNkM2IwNGRjYjEifQ.ReikwmfXSStwbNds2tXk9GABiPUxxAobOU5giKaToi4" 
-        },
-        { 
-            name: "Loki", 
-            address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab",
-            token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2QtNmU2YS1iMmQwLTlmYTkxYTYyMjU3YyIsInNpZCI6MjQwNjk2NjAxLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4YjYyYzA0YmRkODEwZjZiNDdiNTIyMWVhYWVlYmU2ZmM5NDAzOGFhYiIsImV4cCI6MTc4MTQ1NjY0NCwiaWF0IjoxNzgwMjQ3MDQ0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZjA4NjkwOS1lYWNkLTZlNmEtYjJkMC05ZmE5MWE2MjI1N2MifQ.BloKdYt3f4BRnajusosmW7mKVuRepvtxmFfHXdrNehM" 
-        }
-        
-    ];
+{
+name: "Momo",
+address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U"
+},
+{
+name: "James1",
+address: "0x39fac7a74365c188c293bd9a064323b50e63cde7",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjVmMGMyLWVhZTItNmYwOS04YTY0LTQ3Yjk3MzExODU2NiIsInNpZCI6MjQwNjkyMjg5LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4MzlmYWM3YTc0MzY1YzE4OGMyOTNiZDlhMDY0MzIzYjUwZTYzY2RlNyIsImV4cCI6MTc4MTQxNjM4NCwiaWF0IjoxNzgwMjA2Nzg0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY1ZjBjMi1lYWUyLTZmMDktOGE2NC00N2I5NzMxMTg1NjYifQ.c7_w-BJwZl_63qnO_GWNm64Aga6eeIS_fgUec2g3tro"
+},
+{
+name: "Crysite",
+address: "0xe9add5b325d2b7f869b3a3c7b1047600a76192f7",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmU1NmM3LTRlNDktNjI4YS1iYmI3LWY5YWVjMTVmZGM5MCIsInNpZCI6MjQwNjkyNjA1LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4ZTlhZGQ1YjMyNWQyYjdmODY5YjNhM2M3YjEwNDc2MDBhNzYxOTJmNyIsImV4cCI6MTc4MTQxOTMwNiwiaWF0IjoxNzgwMjA5NzA2LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZlNTZjNy00ZTQ5LTYyOGEtYmJiNy1mOWFlYzE1ZmRjOTAifQ.YHWrwCmbEaSciDw2EjSiNOt1to-2NClZVnqX0mC1FPE"
+},
+{
+name: "Cody",
+address: "0x9b3bc1c03e5a8889e893e54950a7c31c11301b79",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIzNTMzLWJiZmItNjM1NS1hN2IyLTA5NmE0MTM4ZmI5OCIsInNpZCI6MjM5ODUzNDMyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4OWIzYmMxYzAzZTVhODg4OWU4OTNlNTQ5NTBhN2MzMWMxMTMwMWI3OSIsImV4cCI6MTc4MTQ1NTMxOSwiaWF0IjoxNzgwMjQ1NzE5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMzUzMy1iYmZiLTYzNTUtYTdiMi0wOTZhNDEzOGZiOTgifQ.SetL7JWU_M0bUiQSd2wTwyFc9oZ0505EGh8Kd5Iobyk"
+},
+{
+name: "Randy",
+address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjY2MWVjLWI5OGItNmE4NS1hNDIwLWYyNDZkMTc4NWYwYSIsInNpZCI6MjQwNjk2NDk2LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2NhNmIzYTVkOWVjMGJhMmJhMDAyOThhYTY3Yjc2OGQ5YmJmN2UwMSIsImV4cCI6MTc4MTQ1NTYzOSwiaWF0IjoxNzgwMjQ2MDM5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY2NjFlYy1iOThiLTZhODUtYTQyMC1mMjQ2ZDE3ODVmMGEifQ.fV0mBq-F753oUD67fWwCVqbe5ybm-HbIkXTgxCCkH-c"
+},
+{
+name: "Omi",
+address: "0x92b626df33ba8bf0d3abd7297e48e5e48e1be030",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCIsInNpZCI6MjM5NjA2MTgyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsIm9pZCI6MjQ3ODUxNCwicm9uaW5BZGRyZXNzIjoiMHg5MmI2MjZkZjMzYmE4YmYwZDNhYmQ3Mjk3ZTQ4ZTVlNDhlMWJlMDMwIiwiZXRoIjoiMHg4YTQyZTY0MDVhMjUzZDIzMDNiNzk3YWJiMGIxNjJkMTFmN2RkYzg5IiwiZXhwIjoxNzgxNDE1OTczLCJpYXQiOjE3ODAyMDYzNzMsImlzcyI6IkF4aWVJbmZpbml0eSIsInN1YiI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCJ9.5hGkzWQhBfB5k7tQ58b1H_xTyTUAJKtjEI6Lnoput1E"
+},
+{
+name: "Pokemon",
+address: "0x374ef4e2154a37ee4fa27b30a173f2f68978c740",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmY1MWJjLTBkMjMtNjA2MS1hNTRhLTliY2QzYjA0ZGNiMSIsInNpZCI6MjQwNjk2NTYzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4Mzc0ZWY0ZTIxNTRhMzdlZTRmYTI3YjMwYTE3M2YyZjY4OTc4Yzc0MCIsImV4cCI6MTc4MTQ1NjM0MywiaWF0IjoxNzgwMjQ2NzQzLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZmNTFiYy0wZDIzLTYwNjEtYTU0YS05YmNkM2IwNGRjYjEifQ.ReikwmfXSStwbNds2tXk9GABiPUxxAobOU5giKaToi4"
+},
+{
+name: "Loki",
+address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab",
+token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2QtNmU2YS1iMmQwLTlmYTkxYTYyMjU3YyIsInNpZCI6MjQwNjk2NjAxLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4YjYyYzA0YmRkODEwZjZiNDdiNTIyMWVhYWVlYmU2ZmM5NDAzOGFhYiIsImV4cCI6MTc4MTQ1NjY0NCwiaWF0IjoxNzgwMjQ3MDQ0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZjA4NjkwOS1lYWNkLTZlNmEtYjJkMC05ZmE5MWE2MjI1N2MifQ.BloKdYt3f4BRnajusosmW7mKVuRepvtxmFfHXdrNehM"
+}
+
+];
+
 
     function getRecentThursday() {
         const d = new Date();
@@ -295,16 +321,44 @@
         return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; 
     }
 
+    // UPDATE: Hàm kiểm tra việc cày cuốc Nhiệm Vụ dựa trên mốc 10h01 sáng hàng ngày
+    function checkDailyBounty(address, currentBp) {
+        if (typeof currentBp !== 'number') return { warned: false }; 
+
+        const d = new Date();
+        // Nếu trước 10h01 sáng thì lùi ngày về 1 để tính là chu kỳ của ngày hôm trước
+        if (d.getHours() < 10 || (d.getHours() === 10 && d.getMinutes() < 1)) {
+            d.setDate(d.getDate() - 1);
+        }
+        
+        const dailyCycleId = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_10h01`;
+        const storageKey = 'axie_daily_bounty_' + address.toLowerCase();
+        let history = JSON.parse(localStorage.getItem(storageKey));
+
+        if (!history) {
+            history = { dailyCycleId: dailyCycleId, startBp: currentBp, currentMaxBp: currentBp };
+        } else {
+            if (history.dailyCycleId !== dailyCycleId) {
+                let newStartBp = history.currentMaxBp;
+                if (currentBp < newStartBp) newStartBp = 0; 
+                history = { dailyCycleId: dailyCycleId, startBp: newStartBp, currentMaxBp: Math.max(newStartBp, currentBp) };
+            } else {
+                history.currentMaxBp = Math.max(history.currentMaxBp, currentBp);
+            }
+        }
+        localStorage.setItem(storageKey, JSON.stringify(history));
+
+        const needsWarning = currentBp <= history.startBp;
+        return { warned: needsWarning };
+    }
+
     function processFarmingDiff(address, currentAssets) {
         const currentCycleId = getRecentThursday();
         const storageKey = 'axie_history_' + address.toLowerCase();
         let history = JSON.parse(localStorage.getItem(storageKey));
 
         if (!history) {
-            history = {
-                lastCycle: null,
-                currentCycle: { id: currentCycleId, ...currentAssets }
-            };
+            history = { lastCycle: null, currentCycle: { id: currentCycleId, ...currentAssets } };
         } else {
             if (history.currentCycle.id !== currentCycleId) {
                 history.lastCycle = history.currentCycle; 
@@ -315,7 +369,6 @@
         }
         
         localStorage.setItem(storageKey, JSON.stringify(history));
-
         if (!history.lastCycle) return null;
 
         return {
@@ -331,7 +384,6 @@
         const sign = val > 0 ? "+" : "";
         const valClass = val > 0 ? "text-green" : "text-red";
         const formattedVal = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals });
-        
         return `<div class="diff-row"><span class="${colorClass}">${name}</span><span class="${valClass}">${sign}${formattedVal}</span></div>`;
     }
 
@@ -405,20 +457,20 @@
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
         const summarySection = document.getElementById("summarySection");
+        const warningSection = document.getElementById("warningSection");
         const grandTotalValueEl = document.getElementById("grandTotalValue");
         const grandTotalDiffValueEl = document.getElementById("grandTotalDiffValue");
         
         btn.innerText = "Đang lấy dữ liệu...";
         btn.disabled = true;
         listEl.innerHTML = "";
-        
-        // Tạm ẩn bảng tổng kết khi đang tải
         summarySection.style.display = "none";
+        warningSection.style.display = "none";
 
-        // Biến tính tổng
         let grandTotalUsd = 0;
         let grandTotalDiffUsd = 0;
         let hasAtLeastOneDiffData = false;
+        let forgottenWallets = [];
 
         const prices = await fetchLivePrices();
 
@@ -433,7 +485,7 @@
             ]);
 
             const totalUsd = (assets.ron * prices.ron) + (assets.slp * prices.slp) + (assets.axs * prices.axs) + (assets.weth * prices.weth);
-            grandTotalUsd += totalUsd; // Cộng dồn vào biến tổng
+            grandTotalUsd += totalUsd;
 
             const diffStats = processFarmingDiff(wallet.address, assets);
             let diffHtml = "";
@@ -443,7 +495,7 @@
             } else {
                 hasAtLeastOneDiffData = true;
                 const diffUsd = (diffStats.ron * prices.ron) + (diffStats.slp * prices.slp) + (diffStats.axs * prices.axs) + (diffStats.weth * prices.weth);
-                grandTotalDiffUsd += diffUsd; // Cộng dồn chênh lệch vào biến tổng
+                grandTotalDiffUsd += diffUsd; 
 
                 const diffUsdClass = diffUsd > 0 ? "text-green" : (diffUsd < 0 ? "text-red" : "");
                 const diffUsdSign = diffUsd > 0 ? "+" : "";
@@ -466,6 +518,15 @@
                     `;
                 }
             }
+
+            const dailyCheck = checkDailyBounty(wallet.address, bountyData.bp);
+            if (dailyCheck.warned) {
+                forgottenWallets.push(wallet.name);
+            }
+            
+            const badgeClass = dailyCheck.warned ? "bounty-badge warning-badge" : "bounty-badge";
+            const badgeTitleColor = dailyCheck.warned ? "#f6465d" : "#f0b90b";
+            const warningHtml = dailyCheck.warned ? `<div style="font-size:12px; margin-top:8px; text-align:right; font-weight:normal;">⚠️ Hãy nhớ vào game làm nhiệm vụ!</div>` : "";
 
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
@@ -514,17 +575,19 @@
 
                 ${diffHtml}
 
-                <div class="bounty-badge">
-                    <div class="bounty-info">
-                        <span class="section-title" style="border:none; margin:0; padding:0; color:#f0b90b;">Điểm Nhiệm Vụ</span>
-                        <span class="bounty-rank">Hạng: ${bountyData.rank}</span>
+                <div class="${badgeClass}">
+                    <div class="bounty-main">
+                        <div class="bounty-info">
+                            <span class="section-title" style="border:none; margin:0; padding:0; color:${badgeTitleColor};">Điểm Nhiệm Vụ</span>
+                            <span class="bounty-rank">Hạng: ${bountyData.rank}</span>
+                        </div>
+                        <span class="bounty-value">${bountyData.bp}</span>
                     </div>
-                    <span class="bounty-value">${bountyData.bp}</span>
+                    ${warningHtml}
                 </div>
             `;
         }
 
-        // --- CODE MỚI: Cập nhật giao diện Bảng Tổng Kết ---
         grandTotalValueEl.innerText = `$${grandTotalUsd.toFixed(2)}`;
         
         if (!hasAtLeastOneDiffData) {
@@ -539,7 +602,13 @@
             grandTotalDiffValueEl.innerText = `${grandSign}$${grandTotalDiffUsd.toFixed(2)}`;
         }
         
-        summarySection.style.display = "block"; // Hiện bảng tổng kết sau khi load xong
+        summarySection.style.display = "block";
+
+        if (forgottenWallets.length > 0) {
+            // UPDATE: Đổi text thông báo thành 10h01
+            warningSection.innerHTML = `🚨 <b>BÁO ĐỘNG ĐỎ:</b> Phát hiện các ví chưa có biến động điểm từ 10h01 sáng nay: <br><span style="color:#fff; font-size:16px; display:inline-block; margin-top:5px;"><b>${forgottenWallets.join(" • ")}</b></span>`;
+            warningSection.style.display = "block";
+        }
 
         btn.innerText = "Cập nhật toàn bộ";
         btn.disabled = false;
