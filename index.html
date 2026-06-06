@@ -3,264 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axie Master Dashboard</title>
+    <title>Axie Master Dashboard - Firebase Edition</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0b0e11;
-            color: #eaecef;
-            margin: 0;
-            padding: 30px 15px;
-            min-height: 100vh;
-        }
-        .dashboard-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .dashboard-title {
-            color: #f0b90b;
-            font-size: 28px;
-            margin-bottom: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .summary-section {
-            background: linear-gradient(145deg, #1e2329, #181a20);
-            border-radius: 15px;
-            padding: 25px;
-            max-width: 600px;
-            margin: 0 auto 20px auto;
-            text-align: center;
-            border: 1px solid #f0b90b;
-            box-shadow: 0 0 20px rgba(240, 185, 11, 0.05);
-            display: none; 
-        }
-        .summary-title {
-            color: #929aa5;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-        }
-        .summary-value {
-            font-size: 46px;
-            font-weight: bold;
-            color: #0dbb72;
-            margin-bottom: 10px;
-            font-family: monospace;
-        }
-        .summary-diff {
-            font-size: 16px;
-            color: #eaecef;
-            background-color: #0b0e11;
-            padding: 10px 20px;
-            border-radius: 8px;
-            display: inline-block;
-        }
-
-        .warning-section {
-            background: rgba(246, 70, 93, 0.1);
-            border: 1px solid rgba(246, 70, 93, 0.4);
-            color: #f6465d;
-            border-radius: 12px;
-            padding: 15px 20px;
-            max-width: 600px;
-            margin: 0 auto 30px auto;
-            text-align: center;
-            display: none;
-            font-size: 15px;
-            line-height: 1.5;
-            box-shadow: 0 0 15px rgba(246, 70, 93, 0.1);
-        }
-
-        .wallets-list {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 25px;
-            max-width: 1300px;
-            margin: 0 auto;
-        }
-        .wallet-card {
-            background-color: #181a20;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            border: 1px solid #232830;
-            width: 100%;
-            max-width: 360px;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-        .wallet-card:hover {
-            transform: translateY(-5px);
-            border-color: #00c2ff;
-        }
-        .wallet-name {
-            font-size: 20px;
-            font-weight: bold;
-            color: #00c2ff;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-        .wallet-address {
-            font-family: monospace;
-            font-size: 13px;
-            color: #929aa5;
-            background-color: #2b3139;
-            padding: 6px 10px;
-            border-radius: 6px;
-            word-break: break-all;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-        .assets-section {
-            background-color: #1e2329;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        .section-title {
-            font-size: 12px;
-            color: #929aa5;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #2b3139;
-            padding-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .asset-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 15px;
-        }
-        .total-usd-item {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-            padding-top: 8px;
-            border-top: 1px dashed #3a414a;
-            font-weight: bold;
-            font-size: 16px;
-            color: #fff;
-        }
+        /* Toàn bộ CSS giữ nguyên như phiên bản trước */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0e11; color: #eaecef; margin: 0; padding: 30px 15px; min-height: 100vh; }
+        .dashboard-header { text-align: center; margin-bottom: 20px; }
+        .dashboard-title { color: #f0b90b; font-size: 28px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .summary-section { background: linear-gradient(145deg, #1e2329, #181a20); border-radius: 15px; padding: 25px; max-width: 600px; margin: 0 auto 20px auto; text-align: center; border: 1px solid #f0b90b; box-shadow: 0 0 20px rgba(240, 185, 11, 0.05); display: none; }
+        .summary-title { color: #929aa5; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
+        .summary-value { font-size: 46px; font-weight: bold; color: #0dbb72; margin-bottom: 10px; font-family: monospace; }
+        .summary-diff { font-size: 16px; color: #eaecef; background-color: #0b0e11; padding: 10px 20px; border-radius: 8px; display: inline-block; }
+        .warning-section { background: rgba(246, 70, 93, 0.1); border: 1px solid rgba(246, 70, 93, 0.4); color: #f6465d; border-radius: 12px; padding: 15px 20px; max-width: 600px; margin: 0 auto 30px auto; text-align: center; display: none; font-size: 15px; line-height: 1.5; box-shadow: 0 0 15px rgba(246, 70, 93, 0.1); }
+        .wallets-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 25px; max-width: 1300px; margin: 0 auto; }
+        .wallet-card { background-color: #181a20; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid #232830; width: 100%; max-width: 360px; display: flex; flex-direction: column; transition: transform 0.2s, border-color 0.2s; }
+        .wallet-card:hover { transform: translateY(-5px); border-color: #00c2ff; }
+        .wallet-name { font-size: 20px; font-weight: bold; color: #00c2ff; margin-bottom: 5px; text-align: center; }
+        .wallet-address { font-family: monospace; font-size: 13px; color: #929aa5; background-color: #2b3139; padding: 6px 10px; border-radius: 6px; word-break: break-all; margin-bottom: 15px; text-align: center; }
+        .assets-section { background-color: #1e2329; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .section-title { font-size: 12px; color: #929aa5; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid #2b3139; padding-bottom: 5px; display: flex; justify-content: space-between; }
+        .asset-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 15px; }
+        .total-usd-item { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #3a414a; font-weight: bold; font-size: 16px; color: #fff; }
         .asset-name { font-weight: bold; width: 50px; }
-        .slp-text { color: #ffa3ce; }
-        .axs-text { color: #0055d4; }
-        .ron-text { color: #1e88e5; }
-        .weth-text { color: #9c9c9c; }
-        
-        .asset-numbers {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-        .asset-value {
-            font-family: monospace;
-            font-size: 15px;
-            color: #fff;
-        }
-        .usd-value {
-            font-family: monospace;
-            font-size: 12px;
-            color: #929aa5;
-        }
-
-        .diff-section {
-            background-color: rgba(13, 187, 114, 0.05);
-            border: 1px solid rgba(13, 187, 114, 0.2);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 15px;
-        }
-        .diff-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            margin-bottom: 5px;
-            font-family: monospace;
-        }
+        .slp-text { color: #ffa3ce; } .axs-text { color: #0055d4; } .ron-text { color: #1e88e5; } .weth-text { color: #9c9c9c; }
+        .asset-numbers { display: flex; flex-direction: column; align-items: flex-end; }
+        .asset-value { font-family: monospace; font-size: 15px; color: #fff; }
+        .usd-value { font-family: monospace; font-size: 12px; color: #929aa5; }
+        .diff-section { background-color: rgba(13, 187, 114, 0.05); border: 1px solid rgba(13, 187, 114, 0.2); border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+        .diff-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; font-family: monospace; }
         .diff-row:last-child { margin-bottom: 0; }
-        .diff-total {
-            text-align: right;
-            font-weight: bold;
-            font-size: 15px;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(13, 187, 114, 0.2);
-        }
-        .text-green { color: #0dbb72; }
-        .text-red { color: #f6465d; }
-        .text-gray { color: #929aa5; font-style: italic; font-size: 12px; text-align: center; }
-
-        .bounty-badge {
-            background-color: rgba(240, 185, 11, 0.1);
-            color: #f0b90b;
-            border: 1px solid rgba(240, 185, 11, 0.3);
-            padding: 15px;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-        }
-        .bounty-badge.warning-badge {
-            background-color: rgba(246, 70, 93, 0.05);
-            border-color: rgba(246, 70, 93, 0.4);
-        }
-        .bounty-main {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        .diff-total { text-align: right; font-weight: bold; font-size: 15px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(13, 187, 114, 0.2); }
+        .text-green { color: #0dbb72; } .text-red { color: #f6465d; } .text-gray { color: #929aa5; font-style: italic; font-size: 12px; text-align: center; }
+        .bounty-badge { background-color: rgba(240, 185, 11, 0.1); color: #f0b90b; border: 1px solid rgba(240, 185, 11, 0.3); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; }
+        .bounty-badge.warning-badge { background-color: rgba(246, 70, 93, 0.05); border-color: rgba(246, 70, 93, 0.4); }
+        .bounty-main { display: flex; justify-content: space-between; align-items: center; }
         .bounty-info { display: flex; flex-direction: column; }
         .bounty-value { font-size: 24px; font-weight: bold; font-family: monospace; }
         .bounty-rank { font-size: 13px; color: #eaecef; margin-top: 3px; }
-        
-        /* Giao diện hiển thị chi tiết điểm cày hàng ngày */
-        .daily-gain-container {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px dashed rgba(240, 185, 11, 0.3);
-        }
-        .daily-row {
-            display: flex; justify-content: space-between; font-size: 13px; color: #929aa5; margin-bottom: 6px; align-items: center;
-        }
-        .daily-val {
-            color: #eaecef; font-weight: bold; font-family: monospace; font-size: 15px;
-        }
+        .daily-gain-container { margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(240, 185, 11, 0.3); }
+        .daily-row { display: flex; justify-content: space-between; font-size: 13px; color: #929aa5; margin-bottom: 6px; align-items: center; }
+        .daily-val { color: #eaecef; font-weight: bold; font-family: monospace; font-size: 15px; }
         .gain-badge { background: rgba(13, 187, 114, 0.1); color: #0dbb72; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 15px;}
         .zero-badge { background: rgba(246, 70, 93, 0.1); color: #f6465d; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 15px;}
-        .daily-alert {
-            color: #f6465d; font-size: 13px; margin-top: 10px; text-align: center; font-weight: bold; background: rgba(246, 70, 93, 0.15); padding: 8px; border-radius: 6px; border: 1px solid rgba(246, 70, 93, 0.3);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(246, 70, 93, 0.4); }
-            70% { box-shadow: 0 0 0 6px rgba(246, 70, 93, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(246, 70, 93, 0); }
-        }
-
-        button {
-            background-color: #00c2ff;
-            color: #000;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-        button:hover { opacity: 0.9; }
-        button:disabled { background-color: #555; cursor: not-allowed; color: #999; }
+        .daily-alert { color: #f6465d; font-size: 13px; margin-top: 10px; text-align: center; font-weight: bold; background: rgba(246, 70, 93, 0.15); padding: 8px; border-radius: 6px; border: 1px solid rgba(246, 70, 93, 0.3); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(246, 70, 93, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(246, 70, 93, 0); } 100% { box-shadow: 0 0 0 0 rgba(246, 70, 93, 0); } }
+        button { background-color: #00c2ff; color: #000; border: none; padding: 12px 28px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; } button:disabled { background-color: #555; cursor: not-allowed; color: #999; }
     </style>
 </head>
 <body>
@@ -283,6 +74,26 @@
 <div class="wallets-list" id="walletsList"></div>
 
 <script>
+    // -------------------------------------------------------------
+    // 1. CẤU HÌNH FIREBASE - ĐIỀN THÔNG TIN TỪ FIREBASE CONSOLE VÀO ĐÂY
+    // -------------------------------------------------------------
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY_HERE",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app", // Thay URL thật của bạn
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    // Khởi tạo Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // -------------------------------------------------------------
+    // 2. CẤU HÌNH AXIE & VÍ
+    // -------------------------------------------------------------
     const graphqlUrl = "https://axie-proxy.vuthanhtunghp1995.workers.dev/";
     const roninRpcUrl = "https://api.roninchain.com/rpc"; 
     
@@ -291,49 +102,11 @@
     const STAKED_AXS_CONTRACT = "0x05b0bb3c1c320b280501b86706c3551995bc8571"; 
     const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
 
-     const wallets = [
-{
-name: "Momo",
-address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U"
-},
-{
-name: "James1",
-address: "0x39fac7a74365c188c293bd9a064323b50e63cde7",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjVmMGMyLWVhZTItNmYwOS04YTY0LTQ3Yjk3MzExODU2NiIsInNpZCI6MjQwNjkyMjg5LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4MzlmYWM3YTc0MzY1YzE4OGMyOTNiZDlhMDY0MzIzYjUwZTYzY2RlNyIsImV4cCI6MTc4MTQxNjM4NCwiaWF0IjoxNzgwMjA2Nzg0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY1ZjBjMi1lYWUyLTZmMDktOGE2NC00N2I5NzMxMTg1NjYifQ.c7_w-BJwZl_63qnO_GWNm64Aga6eeIS_fgUec2g3tro"
-},
-{
-name: "Crysite",
-address: "0xe9add5b325d2b7f869b3a3c7b1047600a76192f7",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmU1NmM3LTRlNDktNjI4YS1iYmI3LWY5YWVjMTVmZGM5MCIsInNpZCI6MjQwNjkyNjA1LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4ZTlhZGQ1YjMyNWQyYjdmODY5YjNhM2M3YjEwNDc2MDBhNzYxOTJmNyIsImV4cCI6MTc4MTQxOTMwNiwiaWF0IjoxNzgwMjA5NzA2LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZlNTZjNy00ZTQ5LTYyOGEtYmJiNy1mOWFlYzE1ZmRjOTAifQ.YHWrwCmbEaSciDw2EjSiNOt1to-2NClZVnqX0mC1FPE"
-},
-{
-name: "Cody",
-address: "0x9b3bc1c03e5a8889e893e54950a7c31c11301b79",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIzNTMzLWJiZmItNjM1NS1hN2IyLTA5NmE0MTM4ZmI5OCIsInNpZCI6MjM5ODUzNDMyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4OWIzYmMxYzAzZTVhODg4OWU4OTNlNTQ5NTBhN2MzMWMxMTMwMWI3OSIsImV4cCI6MTc4MTQ1NTMxOSwiaWF0IjoxNzgwMjQ1NzE5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMzUzMy1iYmZiLTYzNTUtYTdiMi0wOTZhNDEzOGZiOTgifQ.SetL7JWU_M0bUiQSd2wTwyFc9oZ0505EGh8Kd5Iobyk"
-},
-{
-name: "Randy",
-address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjY2MWVjLWI5OGItNmE4NS1hNDIwLWYyNDZkMTc4NWYwYSIsInNpZCI6MjQwNjk2NDk2LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2NhNmIzYTVkOWVjMGJhMmJhMDAyOThhYTY3Yjc2OGQ5YmJmN2UwMSIsImV4cCI6MTc4MTQ1NTYzOSwiaWF0IjoxNzgwMjQ2MDM5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY2NjFlYy1iOThiLTZhODUtYTQyMC1mMjQ2ZDE3ODVmMGEifQ.fV0mBq-F753oUD67fWwCVqbe5ybm-HbIkXTgxCCkH-c"
-},
-{
-name: "Omi",
-address: "0x92b626df33ba8bf0d3abd7297e48e5e48e1be030",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCIsInNpZCI6MjM5NjA2MTgyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsIm9pZCI6MjQ3ODUxNCwicm9uaW5BZGRyZXNzIjoiMHg5MmI2MjZkZjMzYmE4YmYwZDNhYmQ3Mjk3ZTQ4ZTVlNDhlMWJlMDMwIiwiZXRoIjoiMHg4YTQyZTY0MDVhMjUzZDIzMDNiNzk3YWJiMGIxNjJkMTFmN2RkYzg5IiwiZXhwIjoxNzgxNDE1OTczLCJpYXQiOjE3ODAyMDYzNzMsImlzcyI6IkF4aWVJbmZpbml0eSIsInN1YiI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCJ9.5hGkzWQhBfB5k7tQ58b1H_xTyTUAJKtjEI6Lnoput1E"
-},
-{
-name: "Pokemon",
-address: "0x374ef4e2154a37ee4fa27b30a173f2f68978c740",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmY1MWJjLTBkMjMtNjA2MS1hNTRhLTliY2QzYjA0ZGNiMSIsInNpZCI6MjQwNjk2NTYzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4Mzc0ZWY0ZTIxNTRhMzdlZTRmYTI3YjMwYTE3M2YyZjY4OTc4Yzc0MCIsImV4cCI6MTc4MTQ1NjM0MywiaWF0IjoxNzgwMjQ2NzQzLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZmNTFiYy0wZDIzLTYwNjEtYTU0YS05YmNkM2IwNGRjYjEifQ.ReikwmfXSStwbNds2tXk9GABiPUxxAobOU5giKaToi4"
-},
-{
-name: "Loki",
-address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2QtNmU2YS1iMmQwLTlmYTkxYTYyMjU3YyIsInNpZCI6MjQwNjk2NjAxLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4YjYyYzA0YmRkODEwZjZiNDdiNTIyMWVhYWVlYmU2ZmM5NDAzOGFhYiIsImV4cCI6MTc4MTQ1NjY0NCwiaWF0IjoxNzgwMjQ3MDQ0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZjA4NjkwOS1lYWNkLTZlNmEtYjJkMC05ZmE5MWE2MjI1N2MifQ.BloKdYt3f4BRnajusosmW7mKVuRepvtxmFfHXdrNehM"
-}
-
-];
+    const wallets = [
+        { name: "Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", token: "Bearer ey..." },
+        { name: "James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7", token: "Bearer ey..." }
+        // ... thêm các ví khác
+    ];
 
     function getRecentThursday() {
         const d = new Date();
@@ -344,70 +117,84 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; 
     }
 
-    // Logic tính điểm 10h15 - Xử lý cả trường hợp token lỗi
-    function getDailyStats(address, currentBp) {
+    // -------------------------------------------------------------
+    // 3. LOGIC XỬ LÝ (ĐÃ CHUYỂN QUA FIREBASE - ASYNC)
+    // -------------------------------------------------------------
+    
+    // Lưu và lấy điểm cày hàng ngày từ Firebase
+    async function getDailyStats(address, currentBp) {
         let bpNum = parseInt(currentBp);
         if (isNaN(bpNum)) return { tracked: false, start: 0, current: 0, gain: 0, warned: false };
 
         const d = new Date();
-        // Lùi ngày nếu chưa qua 10h15
         if (d.getHours() < 10 || (d.getHours() === 10 && d.getMinutes() < 15)) {
             d.setDate(d.getDate() - 1);
         }
         
         const dailyCycleId = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_10h15`;
-        const storageKey = 'axie_daily_tracker_v3_' + address.toLowerCase(); // Đổi key để dọn data cũ bị kẹt
-        let history = JSON.parse(localStorage.getItem(storageKey));
+        const dbRef = database.ref('axie_master/daily_tracker/' + address.toLowerCase());
 
-        // Cập nhật mốc mới nếu qua ngày
-        if (!history || history.dailyCycleId !== dailyCycleId) {
-            history = { dailyCycleId: dailyCycleId, startBp: bpNum };
-            localStorage.setItem(storageKey, JSON.stringify(history));
-        }
+        try {
+            const snapshot = await dbRef.once('value');
+            let history = snapshot.val();
 
-        // Đề phòng trường hợp reset mùa, điểm tụt xuống
-        if (bpNum < history.startBp) {
-            history.startBp = bpNum;
-            localStorage.setItem(storageKey, JSON.stringify(history));
-        }
-
-        const gain = bpNum - history.startBp;
-        return { 
-            tracked: true,
-            start: history.startBp,
-            current: bpNum,
-            gain: gain, 
-            warned: gain === 0 
-        };
-    }
-
-    function processFarmingDiff(address, currentAssets) {
-        const currentCycleId = getRecentThursday();
-        const storageKey = 'axie_history_' + address.toLowerCase();
-        let history = JSON.parse(localStorage.getItem(storageKey));
-
-        if (!history) {
-            history = { lastCycle: null, currentCycle: { id: currentCycleId, ...currentAssets } };
-        } else {
-            if (history.currentCycle.id !== currentCycleId) {
-                history.lastCycle = history.currentCycle; 
-                history.currentCycle = { id: currentCycleId, ...currentAssets }; 
-            } else {
-                history.currentCycle = { id: currentCycleId, ...currentAssets };
+            if (!history || history.dailyCycleId !== dailyCycleId) {
+                history = { dailyCycleId: dailyCycleId, startBp: bpNum };
+                await dbRef.set(history);
             }
-        }
-        
-        localStorage.setItem(storageKey, JSON.stringify(history));
-        if (!history.lastCycle) return null;
 
-        return {
-            ron: currentAssets.ron - history.lastCycle.ron,
-            slp: currentAssets.slp - history.lastCycle.slp,
-            axs: currentAssets.axs - history.lastCycle.axs,
-            weth: currentAssets.weth - history.lastCycle.weth
-        };
+            if (bpNum < history.startBp) {
+                history.startBp = bpNum;
+                await dbRef.set(history);
+            }
+
+            const gain = bpNum - history.startBp;
+            return { tracked: true, start: history.startBp, current: bpNum, gain: gain, warned: gain === 0 };
+        } catch (error) {
+            console.error("Lỗi Firebase DailyStats:", error);
+            return { tracked: false, start: 0, current: 0, gain: 0, warned: false };
+        }
     }
 
+    // Lưu và lấy lịch sử tài sản (Thứ 5) từ Firebase
+    async function processFarmingDiff(address, currentAssets) {
+        const currentCycleId = getRecentThursday();
+        const dbRef = database.ref('axie_master/farming_history/' + address.toLowerCase());
+
+        try {
+            const snapshot = await dbRef.once('value');
+            let history = snapshot.val();
+
+            if (!history) {
+                history = { lastCycle: null, currentCycle: { id: currentCycleId, ...currentAssets } };
+            } else {
+                if (history.currentCycle.id !== currentCycleId) {
+                    history.lastCycle = history.currentCycle; 
+                    history.currentCycle = { id: currentCycleId, ...currentAssets }; 
+                } else {
+                    history.currentCycle = { id: currentCycleId, ...currentAssets };
+                }
+            }
+            
+            await dbRef.set(history);
+            
+            if (!history.lastCycle) return null;
+            return {
+                ron: currentAssets.ron - history.lastCycle.ron,
+                slp: currentAssets.slp - history.lastCycle.slp,
+                axs: currentAssets.axs - history.lastCycle.axs,
+                weth: currentAssets.weth - history.lastCycle.weth
+            };
+        } catch (error) {
+            console.error("Lỗi Firebase FarmingDiff:", error);
+            return null;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 4. CÁC HÀM FETCH DỮ LIỆU TỪ BLOCKCHAIN & API
+    // -------------------------------------------------------------
+    
     function renderDiffRow(name, val, colorClass, decimals) {
         if (Math.abs(val) < 0.0001) return ''; 
         const sign = val > 0 ? "+" : "";
@@ -420,27 +207,19 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         try {
             const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ronin,smooth-love-potion,axie-infinity,ethereum&vs_currencies=usd");
             const data = await res.json();
-            return {
-                ron: data['ronin']?.usd || 0,
-                slp: data['smooth-love-potion']?.usd || 0,
-                axs: data['axie-infinity']?.usd || 0,
-                weth: data['ethereum']?.usd || 0
-            };
+            return { ron: data['ronin']?.usd || 0, slp: data['smooth-love-potion']?.usd || 0, axs: data['axie-infinity']?.usd || 0, weth: data['ethereum']?.usd || 0 };
         } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
     }
 
     function hexToDec(hexStr, decimals) {
         if (!hexStr || hexStr === "0x" || hexStr === "0x0") return 0;
-        try {
-            return Number(BigInt(hexStr)) / Math.pow(10, decimals);
-        } catch(e) { return 0; }
+        try { return Number(BigInt(hexStr)) / Math.pow(10, decimals); } catch(e) { return 0; }
     }
 
     async function fetchAssets(address) {
         try {
             const cleanAddress = address.toLowerCase().replace("0x", "");
             const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress;
-
             const [ronRes, slpRes, axsRes, wethRes, stakedAxsRes] = await Promise.all([
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }),
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }),
@@ -448,31 +227,15 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4}) }),
                 fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: STAKED_AXS_CONTRACT, data: balanceDataParam}, "latest"], id:5}) })
             ]);
-
-            const ronData = await ronRes.json();
-            const slpData = await slpRes.json();
-            const axsData = await axsRes.json();
-            const wethData = await wethRes.json();
-            const stakedAxsData = await stakedAxsRes.json();
-
+            const ronData = await ronRes.json(), slpData = await slpRes.json(), axsData = await axsRes.json(), wethData = await wethRes.json(), stakedAxsData = await stakedAxsRes.json();
             const totalAxs = hexToDec(axsData.result, 18) + hexToDec(stakedAxsData.result, 18);
-
-            return {
-                ron: hexToDec(ronData.result, 18),
-                slp: hexToDec(slpData.result, 0),
-                axs: totalAxs,
-                weth: hexToDec(wethData.result, 18)
-            };
+            return { ron: hexToDec(ronData.result, 18), slp: hexToDec(slpData.result, 0), axs: totalAxs, weth: hexToDec(wethData.result, 18) };
         } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
     }
 
     async function fetchBountyData(address, authToken) {
         if(!authToken) return { bp: "---", rank: "---" };
-        const rawBody = JSON.stringify({
-            operationName: "GetQuestsSeasonStatsAndUserRank",
-            variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
-            query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n`
-        });
+        const rawBody = JSON.stringify({ operationName: "GetQuestsSeasonStatsAndUserRank", variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" }, query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n` });
         try {
             const res = await fetch(graphqlUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authToken }, body: rawBody });
             const data = await res.json();
@@ -482,6 +245,9 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         } catch (e) { return { bp: "Lỗi mạng", rank: "Lỗi mạng" }; }
     }
 
+    // -------------------------------------------------------------
+    // 5. HIỂN THỊ LÊN GIAO DIỆN
+    // -------------------------------------------------------------
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
@@ -516,11 +282,12 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
             const totalUsd = (assets.ron * prices.ron) + (assets.slp * prices.slp) + (assets.axs * prices.axs) + (assets.weth * prices.weth);
             grandTotalUsd += totalUsd;
 
-            const diffStats = processFarmingDiff(wallet.address, assets);
+            // Xử lý với Firebase (Lấy chênh lệch tài sản) - Cần await
+            const diffStats = await processFarmingDiff(wallet.address, assets);
             let diffHtml = "";
 
             if (!diffStats) {
-                diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu tuần trước để so sánh.<br>Hệ thống đã lưu mốc hôm nay.</div></div>`;
+                diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu tuần trước để so sánh.<br>Đã lưu mốc lên máy chủ.</div></div>`;
             } else {
                 hasAtLeastOneDiffData = true;
                 const diffUsd = (diffStats.ron * prices.ron) + (diffStats.slp * prices.slp) + (diffStats.axs * prices.axs) + (diffStats.weth * prices.weth);
@@ -529,11 +296,7 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
                 const diffUsdClass = diffUsd > 0 ? "text-green" : (diffUsd < 0 ? "text-red" : "");
                 const diffUsdSign = diffUsd > 0 ? "+" : "";
 
-                const rowsHtml = 
-                    renderDiffRow("SLP", diffStats.slp, "slp-text", 0) +
-                    renderDiffRow("RON", diffStats.ron, "ron-text", 3) +
-                    renderDiffRow("AXS", diffStats.axs, "axs-text", 3) +
-                    renderDiffRow("WETH", diffStats.weth, "weth-text", 4);
+                const rowsHtml = renderDiffRow("SLP", diffStats.slp, "slp-text", 0) + renderDiffRow("RON", diffStats.ron, "ron-text", 3) + renderDiffRow("AXS", diffStats.axs, "axs-text", 3) + renderDiffRow("WETH", diffStats.weth, "weth-text", 4);
 
                 if (rowsHtml === "") {
                     diffHtml = `<div class="diff-section"><div class="text-gray">Tài sản không thay đổi so với tuần trước.</div></div>`;
@@ -543,21 +306,17 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
                             <div class="section-title" style="border:none; margin-bottom:5px;"><span>Tiến độ từ Thứ 5</span></div>
                             ${rowsHtml}
                             <div class="diff-total ${diffUsdClass}">${diffUsdSign}$${diffUsd.toFixed(2)}</div>
-                        </div>
-                    `;
+                        </div>`;
                 }
             }
 
-            // Lấy thông tin điểm 10h15 và Hiện tại
-            const dailyStats = getDailyStats(wallet.address, bountyData.bp);
-            if (dailyStats.warned) {
-                forgottenWallets.push(wallet.name);
-            }
+            // Xử lý với Firebase (Lấy điểm cày hàng ngày) - Cần await
+            const dailyStats = await getDailyStats(wallet.address, bountyData.bp);
+            if (dailyStats.warned) forgottenWallets.push(wallet.name);
             
             const badgeClass = dailyStats.warned ? "bounty-badge warning-badge" : "bounty-badge";
             const badgeTitleColor = dailyStats.warned ? "#f6465d" : "#f0b90b";
             
-            // Xây dựng giao diện hiển thị rõ ràng 2 mốc điểm
             let dailyGainHtml = "";
             if (dailyStats.tracked) {
                 dailyGainHtml = `
@@ -577,8 +336,7 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
                             </span>
                         </div>
                         ${dailyStats.warned ? '<div class="daily-alert">⚠️ ĐIỂM CHƯA NHẢY - HÃY VÀO LÀM NHIỆM VỤ!</div>' : ''}
-                    </div>
-                `;
+                    </div>`;
             } else {
                 dailyGainHtml = `<div class="daily-alert" style="color: #929aa5; border-color: #555; background: #222; animation: none;">Không lấy được điểm (Token hết hạn/Lỗi mạng)</div>`;
             }
@@ -589,43 +347,11 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
                 
                 <div class="assets-section">
                     <div class="section-title"><span>Tổng tài sản hiện tại</span></div>
-                    
-                    <div class="asset-item">
-                        <span class="asset-name ron-text">RON</span>
-                        <div class="asset-numbers">
-                            <span class="asset-value">${assets.ron.toFixed(3)}</span>
-                            <span class="usd-value">~$${(assets.ron * prices.ron).toFixed(2)}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="asset-item">
-                        <span class="asset-name slp-text">SLP</span>
-                        <div class="asset-numbers">
-                            <span class="asset-value">${assets.slp.toLocaleString()}</span>
-                            <span class="usd-value">~$${(assets.slp * prices.slp).toFixed(2)}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="asset-item">
-                        <span class="asset-name axs-text">AXS</span>
-                        <div class="asset-numbers">
-                            <span class="asset-value">${assets.axs.toFixed(3)}</span>
-                            <span class="usd-value">~$${(assets.axs * prices.axs).toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    <div class="asset-item">
-                        <span class="asset-name weth-text">WETH</span>
-                        <div class="asset-numbers">
-                            <span class="asset-value">${assets.weth.toFixed(4)}</span>
-                            <span class="usd-value">~$${(assets.weth * prices.weth).toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    <div class="total-usd-item">
-                        <span>Tổng quy đổi:</span>
-                        <span style="color:#0dbb72;">$${totalUsd.toFixed(2)}</span>
-                    </div>
+                    <div class="asset-item"><span class="asset-name ron-text">RON</span><div class="asset-numbers"><span class="asset-value">${assets.ron.toFixed(3)}</span><span class="usd-value">~$${(assets.ron * prices.ron).toFixed(2)}</span></div></div>
+                    <div class="asset-item"><span class="asset-name slp-text">SLP</span><div class="asset-numbers"><span class="asset-value">${assets.slp.toLocaleString()}</span><span class="usd-value">~$${(assets.slp * prices.slp).toFixed(2)}</span></div></div>
+                    <div class="asset-item"><span class="asset-name axs-text">AXS</span><div class="asset-numbers"><span class="asset-value">${assets.axs.toFixed(3)}</span><span class="usd-value">~$${(assets.axs * prices.axs).toFixed(2)}</span></div></div>
+                    <div class="asset-item"><span class="asset-name weth-text">WETH</span><div class="asset-numbers"><span class="asset-value">${assets.weth.toFixed(4)}</span><span class="usd-value">~$${(assets.weth * prices.weth).toFixed(2)}</span></div></div>
+                    <div class="total-usd-item"><span>Tổng quy đổi:</span><span style="color:#0dbb72;">$${totalUsd.toFixed(2)}</span></div>
                 </div>
 
                 ${diffHtml}
@@ -646,14 +372,11 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         grandTotalValueEl.innerText = `$${grandTotalUsd.toFixed(2)}`;
         
         if (!hasAtLeastOneDiffData) {
-            grandTotalDiffValueEl.className = "text-gray";
-            grandTotalDiffValueEl.innerText = "Chưa đủ dữ liệu tuần trước";
+            grandTotalDiffValueEl.className = "text-gray"; grandTotalDiffValueEl.innerText = "Chưa đủ dữ liệu tuần trước";
         } else {
             const grandSign = grandTotalDiffUsd > 0 ? "+" : "";
             const grandClass = grandTotalDiffUsd > 0 ? "text-green" : (grandTotalDiffUsd < 0 ? "text-red" : "text-gray");
-            grandTotalDiffValueEl.className = grandClass;
-            grandTotalDiffValueEl.style.fontWeight = "bold";
-            grandTotalDiffValueEl.style.fontFamily = "monospace";
+            grandTotalDiffValueEl.className = grandClass; grandTotalDiffValueEl.style.fontWeight = "bold"; grandTotalDiffValueEl.style.fontFamily = "monospace";
             grandTotalDiffValueEl.innerText = `${grandSign}$${grandTotalDiffUsd.toFixed(2)}`;
         }
         
@@ -668,7 +391,8 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         btn.disabled = false;
     }
 
-    window.onload = updateDashboard;
+    // Nếu bạn muốn tự chạy ngay khi mở web thì bỏ comment dòng dưới
+    // window.onload = updateDashboard;
 </script>
 
 </body>
