@@ -224,6 +224,10 @@
         .bounty-value { font-size: 22px; font-weight: bold; }
         .bounty-rank { font-size: 13px; color: #eaecef; margin-top: 3px; }
         
+        .daily-gain { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; align-items: center;}
+        .gain-badge { background: rgba(13, 187, 114, 0.1); color: #0dbb72; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 15px;}
+        .zero-badge { background: rgba(246, 70, 93, 0.1); color: #f6465d; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; font-size: 15px;}
+
         button {
             background-color: #00c2ff;
             color: #000;
@@ -311,7 +315,6 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
 
 ];
 
-
     function getRecentThursday() {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
@@ -321,35 +324,38 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; 
     }
 
-    // UPDATE: Hàm kiểm tra việc cày cuốc Nhiệm Vụ dựa trên mốc 10h01 sáng hàng ngày
-    function checkDailyBounty(address, currentBp) {
-        if (typeof currentBp !== 'number') return { warned: false }; 
+    // TÍNH NĂNG MỚI: Tính điểm cày hàng ngày theo mốc 10h15
+    function getDailyStats(address, currentBp) {
+        if (typeof currentBp !== 'number') return { tracked: false, gain: 0, warned: false }; 
 
         const d = new Date();
-        // Nếu trước 10h01 sáng thì lùi ngày về 1 để tính là chu kỳ của ngày hôm trước
-        if (d.getHours() < 10 || (d.getHours() === 10 && d.getMinutes() < 1)) {
+        // Nếu trước 10:15 sáng, lùi về tính cho ngày hôm trước
+        if (d.getHours() < 10 || (d.getHours() === 10 && d.getMinutes() < 15)) {
             d.setDate(d.getDate() - 1);
         }
         
-        const dailyCycleId = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_10h01`;
-        const storageKey = 'axie_daily_bounty_' + address.toLowerCase();
+        const dailyCycleId = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_10h15`;
+        const storageKey = 'axie_daily_tracker_v2_' + address.toLowerCase();
         let history = JSON.parse(localStorage.getItem(storageKey));
 
-        if (!history) {
-            history = { dailyCycleId: dailyCycleId, startBp: currentBp, currentMaxBp: currentBp };
-        } else {
-            if (history.dailyCycleId !== dailyCycleId) {
-                let newStartBp = history.currentMaxBp;
-                if (currentBp < newStartBp) newStartBp = 0; 
-                history = { dailyCycleId: dailyCycleId, startBp: newStartBp, currentMaxBp: Math.max(newStartBp, currentBp) };
-            } else {
-                history.currentMaxBp = Math.max(history.currentMaxBp, currentBp);
-            }
+        // Nếu qua mốc 10h15 của ngày mới hoặc lần đầu tiên vào
+        if (!history || history.dailyCycleId !== dailyCycleId) {
+            history = { dailyCycleId: dailyCycleId, startBp: currentBp };
+            localStorage.setItem(storageKey, JSON.stringify(history));
         }
-        localStorage.setItem(storageKey, JSON.stringify(history));
 
-        const needsWarning = currentBp <= history.startBp;
-        return { warned: needsWarning };
+        // Trường hợp điểm tụt xuống do reset mùa/tuần
+        if (currentBp < history.startBp) {
+            history.startBp = currentBp;
+            localStorage.setItem(storageKey, JSON.stringify(history));
+        }
+
+        const gain = currentBp - history.startBp;
+        return { 
+            tracked: true,
+            gain: gain, 
+            warned: gain === 0 
+        };
     }
 
     function processFarmingDiff(address, currentAssets) {
@@ -519,14 +525,27 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
                 }
             }
 
-            const dailyCheck = checkDailyBounty(wallet.address, bountyData.bp);
-            if (dailyCheck.warned) {
+            // Xử lý thống kê cày cuốc hàng ngày
+            const dailyStats = getDailyStats(wallet.address, bountyData.bp);
+            if (dailyStats.warned) {
                 forgottenWallets.push(wallet.name);
             }
             
-            const badgeClass = dailyCheck.warned ? "bounty-badge warning-badge" : "bounty-badge";
-            const badgeTitleColor = dailyCheck.warned ? "#f6465d" : "#f0b90b";
-            const warningHtml = dailyCheck.warned ? `<div style="font-size:12px; margin-top:8px; text-align:right; font-weight:normal;">⚠️ Hãy nhớ vào game làm nhiệm vụ!</div>` : "";
+            const badgeClass = dailyStats.warned ? "bounty-badge warning-badge" : "bounty-badge";
+            const badgeTitleColor = dailyStats.warned ? "#f6465d" : "#f0b90b";
+            
+            // Render phần thống kê cày hôm nay (nếu ví hợp lệ có token)
+            let dailyGainHtml = "";
+            if (dailyStats.tracked) {
+                dailyGainHtml = `
+                    <div class="daily-gain">
+                        <span style="color: #929aa5; font-size: 13px;">Cày hôm nay:</span>
+                        <span class="${dailyStats.gain > 0 ? 'gain-badge' : 'zero-badge'}">
+                            ${dailyStats.gain > 0 ? '+' + dailyStats.gain : '0'} BP
+                        </span>
+                    </div>
+                `;
+            }
 
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
@@ -583,7 +602,7 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
                         </div>
                         <span class="bounty-value">${bountyData.bp}</span>
                     </div>
-                    ${warningHtml}
+                    ${dailyGainHtml}
                 </div>
             `;
         }
@@ -605,8 +624,7 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         summarySection.style.display = "block";
 
         if (forgottenWallets.length > 0) {
-            // UPDATE: Đổi text thông báo thành 10h01
-            warningSection.innerHTML = `🚨 <b>BÁO ĐỘNG ĐỎ:</b> Phát hiện các ví chưa có biến động điểm từ 10h01 sáng nay: <br><span style="color:#fff; font-size:16px; display:inline-block; margin-top:5px;"><b>${forgottenWallets.join(" • ")}</b></span>`;
+            warningSection.innerHTML = `🚨 <b>BÁO ĐỘNG ĐỎ:</b> Phát hiện các ví chưa cày điểm từ mốc 10h15 sáng: <br><span style="color:#fff; font-size:16px; display:inline-block; margin-top:5px;"><b>${forgottenWallets.join(" • ")}</b></span>`;
             warningSection.style.display = "block";
         }
 
