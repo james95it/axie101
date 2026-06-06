@@ -41,3 +41,17 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
 }
 
 ];
+
+
+const firebaseConfig = {
+  apiKey: "AIzaSyChickPL4iEc5nPrUuvFFbl6ZvbY0pSJVg",
+  authDomain: "axie101.firebaseapp.com",
+  projectId: "axie101",
+  storageBucket: "axie101.firebasestorage.app",
+  messagingSenderId: "1002633232177",
+  appId: "1:1002633232177:web:a3b4a63289a693505b3a10",
+  measurementId: "G-J16G2J28L2"
+};
+
+
+https://axie101-default-rtdb.asia-southeast1.firebasedatabase.app/
