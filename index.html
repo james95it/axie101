@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axie Master Dashboard - Firebase Edition</title>
+    <title>Axie Master Dashboard - Secure Edition</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
     <style>
-        /* Toàn bộ CSS giữ nguyên như phiên bản trước */
+        /* CSS Giao diện cũ giữ nguyên */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0e11; color: #eaecef; margin: 0; padding: 30px 15px; min-height: 100vh; }
         .dashboard-header { text-align: center; margin-bottom: 20px; }
         .dashboard-title { color: #f0b90b; font-size: 28px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
@@ -52,32 +53,59 @@
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(246, 70, 93, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(246, 70, 93, 0); } 100% { box-shadow: 0 0 0 0 rgba(246, 70, 93, 0); } }
         button { background-color: #00c2ff; color: #000; border: none; padding: 12px 28px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
         button:hover { opacity: 0.9; } button:disabled { background-color: #555; cursor: not-allowed; color: #999; }
+
+        /* CSS MỚI CHO PHẦN BẢO MẬT & SETUP */
+        .secure-modal { background: #181a20; border: 1px solid #f0b90b; padding: 30px; border-radius: 12px; max-width: 400px; margin: 50px auto; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.6); }
+        .secure-input { width: 90%; padding: 12px; margin: 15px 0; background: #2b3139; border: 1px solid #474f59; color: #fff; border-radius: 6px; text-align: center; font-size: 16px; }
+        .admin-panel { background: #1e2329; border: 1px dashed #555; padding: 20px; max-width: 600px; margin: 20px auto; border-radius: 10px; display: none; }
+        .admin-textarea { width: 95%; height: 120px; background: #0b0e11; color: #0dbb72; border: 1px solid #333; font-family: monospace; padding: 10px; border-radius: 6px; margin-top: 10px; }
+        .toggle-admin-btn { background: #333; color: #aaa; padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; margin-top: 20px; display: inline-block; }
     </style>
 </head>
 <body>
 
-<div class="dashboard-header">
-    <div class="dashboard-title">Trạm Quản Lý Axie Tổng Hợp</div>
-    <button onclick="updateDashboard()" id="refreshBtn">Cập nhật toàn bộ</button>
+<div id="authContainer" class="secure-modal" style="display: none;">
+    <h3 style="color: #f0b90b; margin-top: 0;">🔒 ĐĂNG NHẬP HỆ THỐNG</h3>
+    <p style="color: #929aa5; font-size: 14px;">Vui lòng nhập Mật khẩu chủ của bạn để giải mã danh sách ví từ máy chủ Firebase.</p>
+    <input type="password" id="masterPasswordInput" class="secure-input" placeholder="Nhập mật khẩu chủ...">
+    <br>
+    <button onclick="handleUnlock()">Mở khóa Dashboard</button>
 </div>
 
-<div id="summarySection" class="summary-section">
-    <div class="summary-title">Tổng Tài Sản (Tất cả các ví)</div>
-    <div class="summary-value" id="grandTotalValue">$0.00</div>
-    <div class="summary-diff" id="grandTotalDiffContainer">
-        Chênh lệch từ Thứ 5: <span id="grandTotalDiffValue" class="text-gray">Đang tính toán...</span>
+<div id="mainDashboard" style="display: none;">
+    <div class="dashboard-header">
+        <div class="dashboard-title">Trạm Quản Lý Axie Tổng Hợp</div>
+        <button onclick="updateDashboard()" id="refreshBtn">Cập nhật toàn bộ</button>
+        <button onclick="logout()" style="background:#f6465d; padding: 6px 12px; font-size: 12px; margin-left: 10px;">Đăng xuất</button>
+    </div>
+
+    <div id="summarySection" class="summary-section">
+        <div class="summary-title">Tổng Tài Sản (Tất cả các ví)</div>
+        <div class="summary-value" id="grandTotalValue">$0.00</div>
+        <div class="summary-diff">
+            Chênh lệch từ Thứ 5: <span id="grandTotalDiffValue" class="text-gray">Đang tính toán...</span>
+        </div>
+    </div>
+
+    <div id="warningSection" class="warning-section"></div>
+    <div class="wallets-list" id="walletsList"></div>
+    
+    <center><div class="toggle-admin-btn" onclick="toggleAdminPanel()">⚙️ Hiện vùng cấu hình dữ liệu (Chỉ dùng khi cần sửa ví)</div></center>
+    <div id="adminPanel" class="admin-panel">
+        <h4 style="margin: 0 0 10px 0; color: #00c2ff;">CẬP NHẬT DANH SÁCH VÍ LÊN FIREBASE</h4>
+        <p style="font-size: 12px; color: #aaaeae; margin: 0;">Sửa định dạng JSON dưới đây, nhập Mật khẩu chủ của bạn rồi bấm Lưu. Hệ thống sẽ tự động mã hóa mã Token trước khi upload lên máy chủ.</p>
+        <textarea id="walletsJsonInput" class="admin-textarea"></textarea>
+        <br><br>
+        <input type="password" id="adminPasswordInput" class="secure-input" style="max-width: 250px; margin: 0 10px 0 0;" placeholder="Nhập mật khẩu chủ để xác nhận...">
+        <button onclick="saveConfigToFirebase()" style="background: #0dbb72; padding: 10px 20px; font-size: 14px;">Mã hóa & Lưu lên Firebase</button>
     </div>
 </div>
 
-<div id="warningSection" class="warning-section"></div>
-
-<div class="wallets-list" id="walletsList"></div>
-
 <script>
     // -------------------------------------------------------------
-    // 1. CẤU HÌNH FIREBASE - ĐIỀN THÔNG TIN TỪ FIREBASE CONSOLE VÀO ĐÂY
+    // 1. CẤU HÌNH FIREBASE - HÃY ĐIỀN LINK DATABASE CỦA BẠN VÀO ĐÂY
     // -------------------------------------------------------------
-   const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyChickPL4iEc5nPrUuvFFbl6ZvbY0pSJVg",
   authDomain: "axie101.firebaseapp.com",
   databaseURL: "https://axie101-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -88,206 +116,143 @@
   measurementId: "G-J16G2J28L2"
 };
 
-    // Khởi tạo Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
     // -------------------------------------------------------------
-    // 2. CẤU HÌNH AXIE & VÍ
+    // 2. BIẾN TOÀN CỤC CHỨA THÔNG TIN SAU KHI GIẢI MÃ
     // -------------------------------------------------------------
+    let wallets = []; 
+    let masterPassword = "";
+
     const graphqlUrl = "https://axie-proxy.vuthanhtunghp1995.workers.dev/";
     const roninRpcUrl = "https://api.roninchain.com/rpc"; 
-    
     const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
     const AXS_CONTRACT = "0x97a9107c1793bc407d6f527b77e7fff4d812bece"; 
     const STAKED_AXS_CONTRACT = "0x05b0bb3c1c320b280501b86706c3551995bc8571"; 
     const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
 
-    const wallets = [
-{
-name: "Momo",
-address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjM3MTgzMDUzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4MTQxMzA2MiwiaWF0IjoxNzgwMjAzNDYyLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.5snsD35R3Wxu3mNWnYdJtFL1rqKKTxYQmS9S_R3vq5U"
-},
-{
-name: "James1",
-address: "0x39fac7a74365c188c293bd9a064323b50e63cde7",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjVmMGMyLWVhZTItNmYwOS04YTY0LTQ3Yjk3MzExODU2NiIsInNpZCI6MjQwNjkyMjg5LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4MzlmYWM3YTc0MzY1YzE4OGMyOTNiZDlhMDY0MzIzYjUwZTYzY2RlNyIsImV4cCI6MTc4MTQxNjM4NCwiaWF0IjoxNzgwMjA2Nzg0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY1ZjBjMi1lYWUyLTZmMDktOGE2NC00N2I5NzMxMTg1NjYifQ.c7_w-BJwZl_63qnO_GWNm64Aga6eeIS_fgUec2g3tro"
-},
-{
-name: "Crysite",
-address: "0xe9add5b325d2b7f869b3a3c7b1047600a76192f7",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmU1NmM3LTRlNDktNjI4YS1iYmI3LWY5YWVjMTVmZGM5MCIsInNpZCI6MjQwNjkyNjA1LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4ZTlhZGQ1YjMyNWQyYjdmODY5YjNhM2M3YjEwNDc2MDBhNzYxOTJmNyIsImV4cCI6MTc4MTQxOTMwNiwiaWF0IjoxNzgwMjA5NzA2LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZlNTZjNy00ZTQ5LTYyOGEtYmJiNy1mOWFlYzE1ZmRjOTAifQ.YHWrwCmbEaSciDw2EjSiNOt1to-2NClZVnqX0mC1FPE"
-},
-{
-name: "Cody",
-address: "0x9b3bc1c03e5a8889e893e54950a7c31c11301b79",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIzNTMzLWJiZmItNjM1NS1hN2IyLTA5NmE0MTM4ZmI5OCIsInNpZCI6MjM5ODUzNDMyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4OWIzYmMxYzAzZTVhODg4OWU4OTNlNTQ5NTBhN2MzMWMxMTMwMWI3OSIsImV4cCI6MTc4MTQ1NTMxOSwiaWF0IjoxNzgwMjQ1NzE5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMzUzMy1iYmZiLTYzNTUtYTdiMi0wOTZhNDEzOGZiOTgifQ.SetL7JWU_M0bUiQSd2wTwyFc9oZ0505EGh8Kd5Iobyk"
-},
-{
-name: "Randy",
-address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjY2MWVjLWI5OGItNmE4NS1hNDIwLWYyNDZkMTc4NWYwYSIsInNpZCI6MjQwNjk2NDk2LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2NhNmIzYTVkOWVjMGJhMmJhMDAyOThhYTY3Yjc2OGQ5YmJmN2UwMSIsImV4cCI6MTc4MTQ1NTYzOSwiaWF0IjoxNzgwMjQ2MDM5LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWY2NjFlYy1iOThiLTZhODUtYTQyMC1mMjQ2ZDE3ODVmMGEifQ.fV0mBq-F753oUD67fWwCVqbe5ybm-HbIkXTgxCCkH-c"
-},
-{
-name: "Omi",
-address: "0x92b626df33ba8bf0d3abd7297e48e5e48e1be030",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCIsInNpZCI6MjM5NjA2MTgyLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsIm9pZCI6MjQ3ODUxNCwicm9uaW5BZGRyZXNzIjoiMHg5MmI2MjZkZjMzYmE4YmYwZDNhYmQ3Mjk3ZTQ4ZTVlNDhlMWJlMDMwIiwiZXRoIjoiMHg4YTQyZTY0MDVhMjUzZDIzMDNiNzk3YWJiMGIxNjJkMTFmN2RkYzg5IiwiZXhwIjoxNzgxNDE1OTczLCJpYXQiOjE3ODAyMDYzNzMsImlzcyI6IkF4aWVJbmZpbml0eSIsInN1YiI6IjFlYzllYjZmLTcyZTItNmQ4Yi1hNjBjLWQyOTEwMTM0MmUyZCJ9.5hGkzWQhBfB5k7tQ58b1H_xTyTUAJKtjEI6Lnoput1E"
-},
-{
-name: "Pokemon",
-address: "0x374ef4e2154a37ee4fa27b30a173f2f68978c740",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZmY1MWJjLTBkMjMtNjA2MS1hNTRhLTliY2QzYjA0ZGNiMSIsInNpZCI6MjQwNjk2NTYzLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4Mzc0ZWY0ZTIxNTRhMzdlZTRmYTI3YjMwYTE3M2YyZjY4OTc4Yzc0MCIsImV4cCI6MTc4MTQ1NjM0MywiaWF0IjoxNzgwMjQ2NzQzLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWZmNTFiYy0wZDIzLTYwNjEtYTU0YS05YmNkM2IwNGRjYjEifQ.ReikwmfXSStwbNds2tXk9GABiPUxxAobOU5giKaToi4"
-},
-{
-name: "Loki",
-address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab",
-token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2QtNmU2YS1iMmQwLTlmYTkxYTYyMjU3YyIsInNpZCI6MjQwNjk2NjAxLCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4YjYyYzA0YmRkODEwZjZiNDdiNTIyMWVhYWVlYmU2ZmM5NDAzOGFhYiIsImV4cCI6MTc4MTQ1NjY0NCwiaWF0IjoxNzgwMjQ3MDQ0LCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZjA4NjkwOS1lYWNkLTZlNmEtYjJkMC05ZmE5MWE2MjI1N2MifQ.BloKdYt3f4BRnajusosmW7mKVuRepvtxmFfHXdrNehM"
-}
-
-];
-
-
-    function getRecentThursday() {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        const day = d.getDay(); 
-        const diff = day >= 4 ? day - 4 : day + 3;
-        d.setDate(d.getDate() - diff);
-        return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; 
-    }
+    // Mẫu cấu hình JSON mặc định hiển thị trong vùng Admin để bạn dễ điền
+    const defaultJsonTemplate = [
+        { "name": "Ví Momo", "address": "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", "token": "Bearer ey..." },
+        { "name": "Ví James1", "address": "0x39fac7a74365c188c293bd9a064323b50e63cde7", "token": "Bearer ey..." }
+    ];
 
     // -------------------------------------------------------------
-    // 3. LOGIC XỬ LÝ (ĐÃ CHUYỂN QUA FIREBASE - ASYNC)
+    // 3. LOGIC BẢO MẬT: MÃ HÓA / GIẢI MÃ / ĐĂNG NHẬP
     // -------------------------------------------------------------
     
-    // Lưu và lấy điểm cày hàng ngày từ Firebase
-    async function getDailyStats(address, currentBp) {
-        let bpNum = parseInt(currentBp);
-        if (isNaN(bpNum)) return { tracked: false, start: 0, current: 0, gain: 0, warned: false };
-
-        const d = new Date();
-        if (d.getHours() < 10 || (d.getHours() === 10 && d.getMinutes() < 15)) {
-            d.setDate(d.getDate() - 1);
+    window.onload = function() {
+        // Kiểm tra xem trình duyệt hiện tại đã lưu mật khẩu từ trước chưa
+        const savedPass = sessionStorage.getItem("master_key") || localStorage.getItem("master_key");
+        if (savedPass) {
+            masterPassword = savedPass;
+            loadAndDecryptDashboard();
+        } else {
+            document.getElementById("authContainer").style.display = "block";
         }
+    };
+
+    function handleUnlock() {
+        const pass = document.getElementById("masterPasswordInput").value;
+        if (!pass) return alert("Vui lòng nhập mật khẩu!");
+        masterPassword = pass;
         
-        const dailyCycleId = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_10h15`;
-        const dbRef = database.ref('axie_master/daily_tracker/' + address.toLowerCase());
+        // Lưu lại vào localStorage của riêng trình duyệt này để lần sau không cần nhập lại
+        localStorage.setItem("master_key", pass);
+        loadAndDecryptDashboard();
+    }
 
+    async function loadAndDecryptDashboard() {
         try {
-            const snapshot = await dbRef.once('value');
-            let history = snapshot.val();
+            const snapshot = await database.ref('axie_master/encrypted_config').once('value');
+            const encryptedData = snapshot.val();
 
-            if (!history || history.dailyCycleId !== dailyCycleId) {
-                history = { dailyCycleId: dailyCycleId, startBp: bpNum };
-                await dbRef.set(history);
+            if (!encryptedData) {
+                // Nếu Firebase hoàn toàn trống (chưa setup lần nào)
+                alert("Hệ thống trống! Hãy thiết lập danh sách ví của bạn ở bảng cấu hình phía dưới.");
+                document.getElementById("authContainer").style.display = "none";
+                document.getElementById("mainDashboard").style.display = "block";
+                document.getElementById("walletsJsonInput").value = JSON.stringify(defaultJsonTemplate, null, 2);
+                toggleAdminPanel();
+                return;
             }
 
-            if (bpNum < history.startBp) {
-                history.startBp = bpNum;
-                await dbRef.set(history);
+            // Tiến hành giải mã chuỗi từ Firebase bằng Mật khẩu chủ
+            const bytes = CryptoJS.AES.decrypt(encryptedData, masterPassword);
+            const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+
+            if (!decryptedText) {
+                alert("Sai mật khẩu chủ! Không thể giải mã dữ liệu.");
+                logout();
+                return;
             }
 
-            const gain = bpNum - history.startBp;
-            return { tracked: true, start: history.startBp, current: bpNum, gain: gain, warned: gain === 0 };
-        } catch (error) {
-            console.error("Lỗi Firebase DailyStats:", error);
-            return { tracked: false, start: 0, current: 0, gain: 0, warned: false };
+            wallets = JSON.parse(decryptedText);
+            
+            // Ẩn màn hình đăng nhập, mở màn hình Dashboard chính công khai
+            document.getElementById("authContainer").style.display = "none";
+            document.getElementById("mainDashboard").style.display = "block";
+            document.getElementById("walletsJsonInput").value = JSON.stringify(wallets, null, 2);
+
+            // Chạy cập nhật dữ liệu tự động
+            updateDashboard();
+
+        } catch (e) {
+            console.error(e);
+            alert("Lỗi tải cấu hình hoặc sai mật khẩu.");
+            logout();
         }
     }
 
-    // Lưu và lấy lịch sử tài sản (Thứ 5) từ Firebase
-    async function processFarmingDiff(address, currentAssets) {
-        const currentCycleId = getRecentThursday();
-        const dbRef = database.ref('axie_master/farming_history/' + address.toLowerCase());
+    // Hàm đẩy danh sách ví của bạn lên thẳng Firebase ở dạng đã mã hóa bảo mật
+    async function saveConfigToFirebase() {
+        const jsonText = document.getElementById("walletsJsonInput").value;
+        const adminPass = document.getElementById("adminPasswordInput").value;
 
+        if (!adminPass) return alert("Vui lòng nhập mật khẩu xác nhận!");
+        
         try {
-            const snapshot = await dbRef.once('value');
-            let history = snapshot.val();
-
-            if (!history) {
-                history = { lastCycle: null, currentCycle: { id: currentCycleId, ...currentAssets } };
-            } else {
-                if (history.currentCycle.id !== currentCycleId) {
-                    history.lastCycle = history.currentCycle; 
-                    history.currentCycle = { id: currentCycleId, ...currentAssets }; 
-                } else {
-                    history.currentCycle = { id: currentCycleId, ...currentAssets };
-                }
-            }
+            // Kiểm tra tính hợp lệ của JSON trước khi xử lý
+            const parsed = JSON.parse(jsonText);
             
-            await dbRef.set(history);
+            // Thực hiện mã hóa chuỗi JSON bằng mật khẩu của bạn
+            const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(parsed), adminPass).toString();
             
-            if (!history.lastCycle) return null;
-            return {
-                ron: currentAssets.ron - history.lastCycle.ron,
-                slp: currentAssets.slp - history.lastCycle.slp,
-                axs: currentAssets.axs - history.lastCycle.axs,
-                weth: currentAssets.weth - history.lastCycle.weth
-            };
-        } catch (error) {
-            console.error("Lỗi Firebase FarmingDiff:", error);
-            return null;
+            // Đẩy chuỗi đã mã hóa lên Firebase
+            await database.ref('axie_master/encrypted_config').set(ciphertext);
+            
+            alert("Đã mã hóa thành công và lưu lên Firebase! Trang web sẽ tải lại.");
+            localStorage.setItem("master_key", adminPass);
+            location.reload();
+        } catch(e) {
+            alert("Lỗi: Dữ liệu nhập vào không đúng định dạng JSON hoặc lỗi kết nối Firebase.");
         }
     }
 
-    // -------------------------------------------------------------
-    // 4. CÁC HÀM FETCH DỮ LIỆU TỪ BLOCKCHAIN & API
-    // -------------------------------------------------------------
-    
-    function renderDiffRow(name, val, colorClass, decimals) {
-        if (Math.abs(val) < 0.0001) return ''; 
-        const sign = val > 0 ? "+" : "";
-        const valClass = val > 0 ? "text-green" : "text-red";
-        const formattedVal = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals });
-        return `<div class="diff-row"><span class="${colorClass}">${name}</span><span class="${valClass}">${sign}${formattedVal}</span></div>`;
+    function logout() {
+        localStorage.removeItem("master_key");
+        sessionStorage.removeItem("master_key");
+        location.reload();
     }
 
-    async function fetchLivePrices() {
-        try {
-            const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ronin,smooth-love-potion,axie-infinity,ethereum&vs_currencies=usd");
-            const data = await res.json();
-            return { ron: data['ronin']?.usd || 0, slp: data['smooth-love-potion']?.usd || 0, axs: data['axie-infinity']?.usd || 0, weth: data['ethereum']?.usd || 0 };
-        } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
-    }
-
-    function hexToDec(hexStr, decimals) {
-        if (!hexStr || hexStr === "0x" || hexStr === "0x0") return 0;
-        try { return Number(BigInt(hexStr)) / Math.pow(10, decimals); } catch(e) { return 0; }
-    }
-
-    async function fetchAssets(address) {
-        try {
-            const cleanAddress = address.toLowerCase().replace("0x", "");
-            const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress;
-            const [ronRes, slpRes, axsRes, wethRes, stakedAxsRes] = await Promise.all([
-                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }),
-                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }),
-                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3}) }),
-                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4}) }),
-                fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: STAKED_AXS_CONTRACT, data: balanceDataParam}, "latest"], id:5}) })
-            ]);
-            const ronData = await ronRes.json(), slpData = await slpRes.json(), axsData = await axsRes.json(), wethData = await wethRes.json(), stakedAxsData = await stakedAxsRes.json();
-            const totalAxs = hexToDec(axsData.result, 18) + hexToDec(stakedAxsData.result, 18);
-            return { ron: hexToDec(ronData.result, 18), slp: hexToDec(slpData.result, 0), axs: totalAxs, weth: hexToDec(wethData.result, 18) };
-        } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; }
-    }
-
-    async function fetchBountyData(address, authToken) {
-        if(!authToken) return { bp: "---", rank: "---" };
-        const rawBody = JSON.stringify({ operationName: "GetQuestsSeasonStatsAndUserRank", variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" }, query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n` });
-        try {
-            const res = await fetch(graphqlUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authToken }, body: rawBody });
-            const data = await res.json();
-            if (data.errors) return { bp: "Sai Token", rank: "Lỗi Token" };
-            const u = data.data?.userLeaderboardRank;
-            return u ? { bp: u.score ?? 0, rank: u.rank ?? "Chưa có" } : { bp: 0, rank: "Chưa xếp hạng" };
-        } catch (e) { return { bp: "Lỗi mạng", rank: "Lỗi mạng" }; }
+    function toggleAdminPanel() {
+        const panel = document.getElementById("adminPanel");
+        panel.style.display = panel.style.display === "block" ? "none" : "block";
     }
 
     // -------------------------------------------------------------
-    // 5. HIỂN THỊ LÊN GIAO DIỆN
+    // 4. TOÀN BỘ LOGIC FETCH & RENDER (GIỮ NGUYÊN TỪ BẢN TRƯỚC)
     // -------------------------------------------------------------
+    function getRecentThursday() { const d = new Date(); d.setHours(0, 0, 0, 0); const day = d.getDay(); const diff = day >= 4 ? day - 4 : day + 3; d.setDate(d.getDate() - diff); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+    async function getDailyStats(address, currentBp) { let bpNum = parseInt(currentBp); if (isNaN(bpNum)) return { tracked: false, start: 0, current: 0, gain: 0, warned: false }; const d = new Date(); if (d.getHours() < 10 || (d.getHours() === 10 && d.getMinutes() < 15)) { d.setDate(d.getDate() - 1); } const dailyCycleId = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_10h15`; const dbRef = database.ref('axie_master/daily_tracker/' + address.toLowerCase()); try { const snapshot = await dbRef.once('value'); let history = snapshot.val(); if (!history || history.dailyCycleId !== dailyCycleId) { history = { dailyCycleId: dailyCycleId, startBp: bpNum }; await dbRef.set(history); } if (bpNum < history.startBp) { history.startBp = bpNum; await dbRef.set(history); } const gain = bpNum - history.startBp; return { tracked: true, start: history.startBp, current: bpNum, gain: gain, warned: gain === 0 }; } catch (error) { return { tracked: false, start: 0, current: 0, gain: 0, warned: false }; } }
+    async function processFarmingDiff(address, currentAssets) { const currentCycleId = getRecentThursday(); const dbRef = database.ref('axie_master/farming_history/' + address.toLowerCase()); try { const snapshot = await dbRef.once('value'); let history = snapshot.val(); if (!history) { history = { lastCycle: null, currentCycle: { id: currentCycleId, ...currentAssets } }; } else { if (history.currentCycle.id !== currentCycleId) { history.lastCycle = history.currentCycle; history.currentCycle = { id: currentCycleId, ...currentAssets }; } else { history.currentCycle = { id: currentCycleId, ...currentAssets }; } } await dbRef.set(history); if (!history.lastCycle) return null; return { ron: currentAssets.ron - history.lastCycle.ron, slp: currentAssets.slp - history.lastCycle.slp, axs: currentAssets.axs - history.lastCycle.axs, weth: currentAssets.weth - history.lastCycle.weth }; } catch (error) { return null; } }
+    function renderDiffRow(name, val, colorClass, decimals) { if (Math.abs(val) < 0.0001) return ''; const sign = val > 0 ? "+" : ""; const valClass = val > 0 ? "text-green" : "text-red"; const formattedVal = val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals }); return `<div class="diff-row"><span class="${colorClass}">${name}</span><span class="${valClass}">${sign}${formattedVal}</span></div>`; }
+    async function fetchLivePrices() { try { const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ronin,smooth-love-potion,axie-infinity,ethereum&vs_currencies=usd"); const data = await res.json(); return { ron: data['ronin']?.usd || 0, slp: data['smooth-love-potion']?.usd || 0, axs: data['axie-infinity']?.usd || 0, weth: data['ethereum']?.usd || 0 }; } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; } }
+    function hexToDec(hexStr, decimals) { if (!hexStr || hexStr === "0x" || hexStr === "0x0") return 0; try { return Number(BigInt(hexStr)) / Math.pow(10, decimals); } catch(e) { return 0; } }
+    async function fetchAssets(address) { try { const cleanAddress = address.toLowerCase().replace("0x", ""); const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress; const [ronRes, slpRes, axsRes, wethRes, stakedAxsRes] = await Promise.all([ fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: STAKED_AXS_CONTRACT, data: balanceDataParam}, "latest"], id:5}) }) ]); const ronData = await ronRes.json(), slpData = await slpRes.json(), axsData = await axsRes.json(), wethData = await wethRes.json(), stakedAxsData = await stakedAxsRes.json(); const totalAxs = hexToDec(axsData.result, 18) + hexToDec(stakedAxsData.result, 18); return { ron: hexToDec(ronData.result, 18), slp: hexToDec(slpData.result, 0), axs: totalAxs, weth: hexToDec(wethData.result, 18) }; } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; } }
+    async function fetchBountyData(address, authToken) { if(!authToken) return { bp: "---", rank: "---" }; const rawBody = JSON.stringify({ operationName: "GetQuestsSeasonStatsAndUserRank", variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" }, query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n` }); try { const res = await fetch(graphqlUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authToken }, body: rawBody }); const data = await res.json(); if (data.errors) return { bp: "Sai Token", rank: "Lỗi Token" }; const u = data.data?.userLeaderboardRank; return u ? { bp: u.score ?? 0, rank: u.rank ?? "Chưa có" } : { bp: 0, rank: "Chưa xếp hạng" }; } catch (e) { return { bp: "Lỗi mạng", rank: "Lỗi mạng" }; } }
+
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
         const btn = document.getElementById("refreshBtn");
@@ -296,143 +261,83 @@ token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFmMDg2OTA5LWVhY2Qt
         const grandTotalValueEl = document.getElementById("grandTotalValue");
         const grandTotalDiffValueEl = document.getElementById("grandTotalDiffValue");
         
-        btn.innerText = "Đang lấy dữ liệu...";
-        btn.disabled = true;
-        listEl.innerHTML = "";
-        summarySection.style.display = "none";
-        warningSection.style.display = "none";
+        btn.innerText = "Đang lấy dữ liệu..."; btn.disabled = true;
+        listEl.innerHTML = ""; summarySection.style.display = "none"; warningSection.style.display = "none";
 
-        let grandTotalUsd = 0;
-        let grandTotalDiffUsd = 0;
-        let hasAtLeastOneDiffData = false;
-        let forgottenWallets = [];
-
+        let grandTotalUsd = 0; let grandTotalDiffUsd = 0; let hasAtLeastOneDiffData = false; let forgottenWallets = [];
         const prices = await fetchLivePrices();
 
         for (const wallet of wallets) {
-            const card = document.createElement("div");
-            card.className = "wallet-card";
-            listEl.appendChild(card);
-
-            const [assets, bountyData] = await Promise.all([
-                fetchAssets(wallet.address),
-                fetchBountyData(wallet.address, wallet.token)
-            ]);
-
+            const card = document.createElement("div"); card.className = "wallet-card"; listEl.appendChild(card);
+            const [assets, bountyData] = await Promise.all([fetchAssets(wallet.address), fetchBountyData(wallet.address, wallet.token)]);
             const totalUsd = (assets.ron * prices.ron) + (assets.slp * prices.slp) + (assets.axs * prices.axs) + (assets.weth * prices.weth);
             grandTotalUsd += totalUsd;
 
-            // Xử lý với Firebase (Lấy chênh lệch tài sản) - Cần await
             const diffStats = await processFarmingDiff(wallet.address, assets);
             let diffHtml = "";
-
             if (!diffStats) {
-                diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu tuần trước để so sánh.<br>Đã lưu mốc lên máy chủ.</div></div>`;
+                diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu chốt sổ.<br>Hệ thống đã cập nhật mốc lên máy chủ.</div></div>`;
             } else {
                 hasAtLeastOneDiffData = true;
                 const diffUsd = (diffStats.ron * prices.ron) + (diffStats.slp * prices.slp) + (diffStats.axs * prices.axs) + (diffStats.weth * prices.weth);
-                grandTotalDiffUsd += diffUsd; 
-
+                grandTotalDiffUsd += diffUsd;
                 const diffUsdClass = diffUsd > 0 ? "text-green" : (diffUsd < 0 ? "text-red" : "");
                 const diffUsdSign = diffUsd > 0 ? "+" : "";
-
                 const rowsHtml = renderDiffRow("SLP", diffStats.slp, "slp-text", 0) + renderDiffRow("RON", diffStats.ron, "ron-text", 3) + renderDiffRow("AXS", diffStats.axs, "axs-text", 3) + renderDiffRow("WETH", diffStats.weth, "weth-text", 4);
-
                 if (rowsHtml === "") {
-                    diffHtml = `<div class="diff-section"><div class="text-gray">Tài sản không thay đổi so với tuần trước.</div></div>`;
+                    diffHtml = `<div class="diff-section"><div class="text-gray">Tài sản không đổi so với Thứ 5.</div></div>`;
                 } else {
-                    diffHtml = `
-                        <div class="diff-section">
-                            <div class="section-title" style="border:none; margin-bottom:5px;"><span>Tiến độ từ Thứ 5</span></div>
-                            ${rowsHtml}
-                            <div class="diff-total ${diffUsdClass}">${diffUsdSign}$${diffUsd.toFixed(2)}</div>
-                        </div>`;
+                    diffHtml = `<div class="diff-section"><div class="section-title" style="border:none; margin-bottom:5px;"><span>Tiến độ từ Thứ 5</span></div>${rowsHtml}<div class="diff-total ${diffUsdClass}">${diffUsdSign}$${diffUsd.toFixed(2)}</div></div>`;
                 }
             }
 
-            // Xử lý với Firebase (Lấy điểm cày hàng ngày) - Cần await
             const dailyStats = await getDailyStats(wallet.address, bountyData.bp);
             if (dailyStats.warned) forgottenWallets.push(wallet.name);
-            
             const badgeClass = dailyStats.warned ? "bounty-badge warning-badge" : "bounty-badge";
             const badgeTitleColor = dailyStats.warned ? "#f6465d" : "#f0b90b";
             
-            let dailyGainHtml = "";
-            if (dailyStats.tracked) {
-                dailyGainHtml = `
-                    <div class="daily-gain-container">
-                        <div class="daily-row">
-                            <span>Mốc 10:15:</span>
-                            <span class="daily-val">${dailyStats.start} BP</span>
-                        </div>
-                        <div class="daily-row">
-                            <span>Hiện tại:</span>
-                            <span class="daily-val">${dailyStats.current} BP</span>
-                        </div>
-                        <div class="daily-row" style="margin-top: 10px;">
-                            <span style="font-size: 14px; font-weight: bold;">Tiến độ đã cày:</span>
-                            <span class="${dailyStats.gain > 0 ? 'gain-badge' : 'zero-badge'}">
-                                ${dailyStats.gain > 0 ? '+' + dailyStats.gain : '0'} BP
-                            </span>
-                        </div>
-                        ${dailyStats.warned ? '<div class="daily-alert">⚠️ ĐIỂM CHƯA NHẢY - HÃY VÀO LÀM NHIỆM VỤ!</div>' : ''}
-                    </div>`;
-            } else {
-                dailyGainHtml = `<div class="daily-alert" style="color: #929aa5; border-color: #555; background: #222; animation: none;">Không lấy được điểm (Token hết hạn/Lỗi mạng)</div>`;
-            }
+            let dailyGainHtml = dailyStats.tracked ? `
+                <div class="daily-gain-container">
+                    <div class="daily-row"><span>Mốc 10:15:</span><span class="daily-val">${dailyStats.start} BP</span></div>
+                    <div class="daily-row"><span>Hiện tại:</span><span class="daily-val">${dailyStats.current} BP</span></div>
+                    <div class="daily-row" style="margin-top: 10px;"><span style="font-size: 14px; font-weight: bold;">Đã cày:</span><span class="${dailyStats.gain > 0 ? 'gain-badge' : 'zero-badge'}">${dailyStats.gain > 0 ? '+' + dailyStats.gain : '0'} BP</span></div>
+                    ${dailyStats.warned ? '<div class="daily-alert">⚠️ ĐIỂM CHƯA NHẢY - HÃY VÀO LÀM NHIỆM VỤ!</div>' : ''}
+                </div>` : `<div class="daily-alert" style="color: #929aa5; border-color: #555; background: #222; animation: none;">Lỗi token hoặc mạng</div>`;
 
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
-                <div class="wallet-address" title="${wallet.address}">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
-                
+                <div class="wallet-address">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
                 <div class="assets-section">
-                    <div class="section-title"><span>Tổng tài sản hiện tại</span></div>
+                    <div class="section-title"><span>Tài sản hiện tại</span></div>
                     <div class="asset-item"><span class="asset-name ron-text">RON</span><div class="asset-numbers"><span class="asset-value">${assets.ron.toFixed(3)}</span><span class="usd-value">~$${(assets.ron * prices.ron).toFixed(2)}</span></div></div>
                     <div class="asset-item"><span class="asset-name slp-text">SLP</span><div class="asset-numbers"><span class="asset-value">${assets.slp.toLocaleString()}</span><span class="usd-value">~$${(assets.slp * prices.slp).toFixed(2)}</span></div></div>
                     <div class="asset-item"><span class="asset-name axs-text">AXS</span><div class="asset-numbers"><span class="asset-value">${assets.axs.toFixed(3)}</span><span class="usd-value">~$${(assets.axs * prices.axs).toFixed(2)}</span></div></div>
                     <div class="asset-item"><span class="asset-name weth-text">WETH</span><div class="asset-numbers"><span class="asset-value">${assets.weth.toFixed(4)}</span><span class="usd-value">~$${(assets.weth * prices.weth).toFixed(2)}</span></div></div>
-                    <div class="total-usd-item"><span>Tổng quy đổi:</span><span style="color:#0dbb72;">$${totalUsd.toFixed(2)}</span></div>
+                    <div class="total-usd-item"><span>Tổng:</span><span style="color:#0dbb72;">$${totalUsd.toFixed(2)}</span></div>
                 </div>
-
                 ${diffHtml}
-
                 <div class="${badgeClass}">
                     <div class="bounty-main">
-                        <div class="bounty-info">
-                            <span class="section-title" style="border:none; margin:0; padding:0; color:${badgeTitleColor};">Điểm Nhiệm Vụ</span>
-                            <span class="bounty-rank">Hạng: ${bountyData.rank}</span>
-                        </div>
+                        <div class="bounty-info"><span class="section-title" style="border:none; margin:0; padding:0; color:${badgeTitleColor};">Nhiệm Vụ</span><span class="bounty-rank">Hạng: ${bountyData.rank}</span></div>
                         <span class="bounty-value" style="color: ${badgeTitleColor}">${bountyData.bp}</span>
                     </div>
                     ${dailyGainHtml}
-                </div>
-            `;
+                </div>`;
         }
 
         grandTotalValueEl.innerText = `$${grandTotalUsd.toFixed(2)}`;
-        
-        if (!hasAtLeastOneDiffData) {
-            grandTotalDiffValueEl.className = "text-gray"; grandTotalDiffValueEl.innerText = "Chưa đủ dữ liệu tuần trước";
-        } else {
+        if (hasAtLeastOneDiffData) {
             const grandSign = grandTotalDiffUsd > 0 ? "+" : "";
-            const grandClass = grandTotalDiffUsd > 0 ? "text-green" : (grandTotalDiffUsd < 0 ? "text-red" : "text-gray");
-            grandTotalDiffValueEl.className = grandClass; grandTotalDiffValueEl.style.fontWeight = "bold"; grandTotalDiffValueEl.style.fontFamily = "monospace";
+            grandTotalDiffValueEl.className = grandTotalDiffUsd > 0 ? "text-green" : "text-red";
             grandTotalDiffValueEl.innerText = `${grandSign}$${grandTotalDiffUsd.toFixed(2)}`;
         }
-        
         summarySection.style.display = "block";
-
         if (forgottenWallets.length > 0) {
-            warningSection.innerHTML = `🚨 <b>CẢNH BÁO:</b> Phát hiện các ví chưa cày điểm từ mốc 10h15 sáng nay: <br><span style="color:#fff; font-size:16px; display:inline-block; margin-top:5px;"><b>${forgottenWallets.join(" • ")}</b></span>`;
+            warningSection.innerHTML = `🚨 <b>CẢNH BÁO:</b> Ví chưa cày điểm từ 10h15: <b>${forgottenWallets.join(" • ")}</b>`;
             warningSection.style.display = "block";
         }
-
-        btn.innerText = "Cập nhật toàn bộ";
-        btn.disabled = false;
+        btn.innerText = "Cập nhật toàn bộ"; btn.disabled = false;
     }
-
-    // Nếu bạn muốn tự chạy ngay khi mở web thì bỏ comment dòng dưới
-    // window.onload = updateDashboard;
 </script>
 
 </body>
