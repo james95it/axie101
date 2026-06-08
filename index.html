@@ -336,12 +336,12 @@
             warningSection.innerHTML = `🚨 <b>CẢNH BÁO:</b> Ví chưa cày điểm từ 10h15: <b>${forgottenWallets.join(" • ")}</b>`;
             warningSection.style.display = "block";
         }
-        else
+        btn.innerText = "Cập nhật toàn bộ"; btn.disabled = false;
+        if (forgottenWallets.length = 0)
         {
             warningSection.innerHTML = `🚨 <b>Tất cả đã cày đủ !!</b>`;
             warningSection.style.display = "block";
         }
-        btn.innerText = "Cập nhật toàn bộ"; btn.disabled = false;
     }
 </script>
 
