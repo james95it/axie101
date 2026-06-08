@@ -333,15 +333,19 @@
         }
         summarySection.style.display = "block";
         if (forgottenWallets.length > 0) {
+            warningSection.style.background = "rgba(246, 70, 93, 0.1)";
+            warningSection.style.borderColor = "rgba(246, 70, 93, 0.4)";
+            warningSection.style.color = "#f6465d";
             warningSection.innerHTML = `🚨 <b>CẢNH BÁO:</b> Ví chưa cày điểm từ 10h15: <b>${forgottenWallets.join(" • ")}</b>`;
+            warningSection.style.display = "block";
+        } else if (wallets.length > 0) {
+            warningSection.style.background = "rgba(13, 187, 114, 0.1)";
+            warningSection.style.borderColor = "rgba(13, 187, 114, 0.4)";
+            warningSection.style.color = "#0dbb72";
+            warningSection.innerHTML = `✅ <b>TUYỆT VỜI:</b> Tất cả các ví đều đã hoàn thành nhiệm vụ hôm nay!`;
             warningSection.style.display = "block";
         }
         btn.innerText = "Cập nhật toàn bộ"; btn.disabled = false;
-        if (forgottenWallets.length = 0)
-        {
-            warningSection.innerHTML = `🚨 <b>Tất cả đã cày đủ !!</b>`;
-            warningSection.style.display = "block";
-        }
     }
 </script>
 
