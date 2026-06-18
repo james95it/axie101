@@ -1,0 +1,36 @@
+name: Axie Auto Snapshot Bot
+
+on:
+  schedule:
+    # Máy chủ GitHub chạy giờ Quốc tế (UTC). Múi giờ VN là UTC+7.
+    # 10h01 sáng VN = 03h01 sáng UTC. Cú pháp Cron: Phút Giờ Ngày Tháng Tuần
+    - cron: '1 3 * * *'
+  workflow_dispatch: # Cho phép bạn bấm nút chạy thủ công để test
+
+jobs:
+  run-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lấy mã nguồn về máy chủ
+        uses: actions/checkout@v3
+
+      - name: Cài đặt Node.js môi trường
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Cài đặt thư viện Trình duyệt tàng hình (Puppeteer Stealth)
+        run: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
+
+      - name: Khởi động Bot lấy điểm
+        env:
+          FIREBASE_URL: ${{ secrets.FIREBASE_URL }}
+          TOKEN_MOMO: ${{ secrets.TOKEN_MOMO }}
+          TOKEN_JAMES1: ${{ secrets.TOKEN_JAMES1 }}
+          TOKEN_CRYSITE: ${{ secrets.TOKEN_CRYSITE }}
+          TOKEN_CODY: ${{ secrets.TOKEN_CODY }}
+          TOKEN_RANDY: ${{ secrets.TOKEN_RANDY }}
+          TOKEN_OMI: ${{ secrets.TOKEN_OMI }}
+          TOKEN_POKEMON: ${{ secrets.TOKEN_POKEMON }}
+          TOKEN_LOKI: ${{ secrets.TOKEN_LOKI }}
+        run: node bot.js
