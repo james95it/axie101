@@ -16,7 +16,16 @@ const wallets = [
 ];
 
 (async () => {
-    const browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    // Cập nhật cấu hình khởi động trình duyệt (Thêm 2 dòng tắt bảo mật)
+    const browser = await puppeteer.launch({ 
+        headless: "new", 
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-web-security', 
+            '--disable-features=IsolateOrigins,site-per-process'
+        ] 
+    });
     const page = await browser.newPage();
 
     console.log("⏳ Đang truy cập Axie để vượt qua Cloudflare...");
