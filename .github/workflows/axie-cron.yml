@@ -2,22 +2,20 @@ name: Axie Auto Snapshot Bot
 
 on:
   schedule:
-    # Máy chủ GitHub chạy giờ Quốc tế (UTC). Múi giờ VN là UTC+7.
-    # 10h01 sáng VN = 03h01 sáng UTC. Cú pháp Cron: Phút Giờ Ngày Tháng Tuần
     - cron: '1 3 * * *'
-  workflow_dispatch: # Cho phép bạn bấm nút chạy thủ công để test
+  workflow_dispatch: 
 
 jobs:
   run-snapshot:
     runs-on: ubuntu-latest
     steps:
       - name: Lấy mã nguồn về máy chủ
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Đã nâng cấp lên v4
 
       - name: Cài đặt Node.js môi trường
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # Đã nâng cấp lên v4
         with:
-          node-version: '18'
+          node-version: '22' # Sử dụng Node.js thế hệ mới
 
       - name: Cài đặt thư viện Trình duyệt tàng hình (Puppeteer Stealth)
         run: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
