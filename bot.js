@@ -16,17 +16,14 @@ const wallets = [
 ];
 
 (async () => {
-    // Mở một trình duyệt ẩn
     const browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
 
     console.log("⏳ Đang truy cập Axie để vượt qua Cloudflare...");
-    // Truy cập thẳng vào web game để trình duyệt tự giải mã vòng xoay Cloudflare
     await page.goto('https://app.axieinfinity.com', { waitUntil: 'networkidle2' });
-    await new Promise(r => setTimeout(r, 6000)); // Đợi 6 giây cho chắc chắn vượt qua
+    await new Promise(r => setTimeout(r, 6000)); 
     console.log("✅ Đã vào trong, bắt đầu lấy điểm!");
 
-    // Tính toán ngày giờ (cộng thêm 7 tiếng vì máy chủ GitHub chạy giờ UTC)
     const d = new Date();
     d.setHours(d.getHours() + 7);
     const yyyy = d.getUTCFullYear();
@@ -40,8 +37,8 @@ const wallets = [
             continue;
         }
 
-        // Bơm lệnh lấy điểm vào trực tiếp bên trong trình duyệt đã vượt tường lửa
-        const bp = await page.evaluate(async (address, token) => {
+        // Chẩn đoán lỗi chi tiết khi gọi API
+        const result = await page.evaluate(async (address, token) => {
             try {
                 const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
                     method: "POST",
@@ -55,16 +52,34 @@ const wallets = [
                         query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n`
                     })
                 });
-                const data = await res.json();
-                if (data.errors) return null;
+                
+                const text = await res.text();
+                if (res.status !== 200) {
+                    return { success: false, reason: `Lỗi HTTP ${res.status}`, detail: text.substring(0, 150) };
+                }
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch(e) {
+                    return { success: false, reason: "Phản hồi không phải JSON (Bị chặn API)", detail: text.substring(0, 150) };
+                }
+
+                if (data.errors) {
+                    return { success: false, reason: "Lỗi token (Có thể token đã hết hạn)", detail: JSON.stringify(data.errors) };
+                }
+
                 const u = data.data && data.data.userLeaderboardRank;
-                return u && u.score ? parseInt(u.score) : 0;
+                const bp = u && u.score ? parseInt(u.score) : 0;
+                return { success: true, bp: bp };
+
             } catch (e) {
-                return null;
+                return { success: false, reason: "Lỗi kết nối Fetch nội bộ", detail: e.message };
             }
         }, wallet.address, wallet.token);
 
-        if (bp !== null) {
+        if (result.success) {
+            const bp = result.bp;
             const dbRef = `${FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
             await fetch(dbRef, {
                 method: 'PUT',
@@ -73,7 +88,8 @@ const wallets = [
             });
             console.log(`✅ Đã chốt mốc ${bp} BP cho ví ${wallet.name}`);
         } else {
-            console.log(`⚠️ Không lấy được điểm cho ví ${wallet.name}`);
+            console.log(`⚠️ Lỗi ví ${wallet.name}: ${result.reason}`);
+            console.log(`   └─ Chi tiết: ${result.detail}`);
         }
     }
     
