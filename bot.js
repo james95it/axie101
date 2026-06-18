@@ -16,7 +16,7 @@ const wallets = [
 ];
 
 (async () => {
-    // Cập nhật cấu hình khởi động trình duyệt (Thêm 2 dòng tắt bảo mật)
+    // 1. Khởi động trình duyệt với các lệnh tắt khiên bảo mật CORS
     const browser = await puppeteer.launch({ 
         headless: "new", 
         args: [
@@ -28,11 +28,13 @@ const wallets = [
     });
     const page = await browser.newPage();
 
-    console.log("⏳ Đang truy cập Axie để vượt qua Cloudflare...");
-    await page.goto('https://app.axieinfinity.com', { waitUntil: 'networkidle2' });
-    await new Promise(r => setTimeout(r, 6000)); 
-    console.log("✅ Đã vào trong, bắt đầu lấy điểm!");
+    // 2. Truy cập thẳng vào cổng API để lấy vé qua cửa Cloudflare
+    console.log("⏳ Đang truy cập thẳng vào Cổng API để lấy vé Cloudflare...");
+    await page.goto('https://graphql-gateway.axieinfinity.com/graphql', { waitUntil: 'networkidle2' });
+    await new Promise(r => setTimeout(r, 8000)); // Đợi 8 giây để hệ thống kiểm tra xong
+    console.log("✅ Đã lấy vé thành công, bắt đầu gọi điểm!");
 
+    // 3. Tính toán ngày giờ lưu Firebase (UTC + 7)
     const d = new Date();
     d.setHours(d.getHours() + 7);
     const yyyy = d.getUTCFullYear();
@@ -40,13 +42,13 @@ const wallets = [
     const day = d.getUTCDate();
     const dailyCycleId = `${yyyy}-${m}-${day}_10h01`;
 
+    // 4. Bắt đầu vòng lặp lấy điểm cho từng ví
     for (const wallet of wallets) {
         if (!wallet.token) {
             console.log(`❌ Bỏ qua ví ${wallet.name} (Chưa cài Token trong GitHub Secrets).`);
             continue;
         }
 
-        // Chẩn đoán lỗi chi tiết khi gọi API
         const result = await page.evaluate(async (address, token) => {
             try {
                 const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
@@ -87,6 +89,7 @@ const wallets = [
             }
         }, wallet.address, wallet.token);
 
+        // 5. Gửi lên Firebase nếu thành công, hoặc in lỗi nếu thất bại
         if (result.success) {
             const bp = result.bp;
             const dbRef = `${FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
