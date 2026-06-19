@@ -2,7 +2,8 @@ name: Axie Auto Snapshot Bot
 
 on:
   schedule:
-    - cron: '1 3 * * *'
+    # Test tự động chạy lúc 12:15 trưa VN (05:15 UTC)
+    - cron: '15 5 * * *'
   workflow_dispatch: 
 
 jobs:
