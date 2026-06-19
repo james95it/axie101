@@ -108,3 +108,4 @@ const wallets = [
     await browser.close();
     console.log("🎉 Hoàn tất tiến trình!");
 })();
+// Test đánh thức cron job ngày 19/6
