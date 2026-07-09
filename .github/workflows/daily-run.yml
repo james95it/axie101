@@ -1,8 +1,5 @@
 name: Axie Auto Snapshot Bot
 
-on:
-  schedule:
-    - cron: '43 2 * * *'
   workflow_dispatch: 
   push:                   # THÊM DÒNG NÀY
     branches:             # THÊM DÒNG NÀY
