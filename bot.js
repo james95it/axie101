@@ -1,15 +1,17 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const admin = require("firebase-admin");
 
-const FIREBASE_URL = process.env.FIREBASE_URL.replace(/\/$/, "");
-const roninRpcUrl = "https://api.roninchain.com/rpc";
-// Các địa chỉ hợp đồng
-const SLP_CONTRACT = "0xa8754b9fa15fc18bb59458815510e40a12cd2014";
-const AXS_CONTRACT = "0x97a9107c1793bc407d6f527b77e7fff4d812bece"; 
-const STAKED_AXS_CONTRACT = "0x05b0bb3c1c320b280501b86706c3551995bc8571"; 
-const WETH_CONTRACT = "0xc99a6a985ed2cac1ef41640596c5a5f9f4e19ef5";
+// 1. Cấu hình Firebase Admin (Đảm bảo bạn đã cài: npm install firebase-admin)
+// Bạn cần tạo serviceAccountKey.json từ Firebase Console -> Project Settings -> Service Accounts
+const serviceAccount = require("./serviceAccountKey.json"); 
 
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: process.env.FIREBASE_URL
+});
+
+const db = admin.database();
+
+// 2. Danh sách ví (Sử dụng biến môi trường từ GitHub Secrets)
 const wallets = [
     { name: "Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", token: process.env.TOKEN_MOMO },
     { name: "James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7", token: process.env.TOKEN_JAMES1 },
@@ -21,68 +23,55 @@ const wallets = [
     { name: "Loki", address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab", token: process.env.TOKEN_LOKI }
 ];
 
-function hexToDec(hexStr, decimals) {
-    if (!hexStr || hexStr === "0x" || hexStr === "0x0") return 0;
-    try { return Number(BigInt(hexStr)) / Math.pow(10, decimals); } catch(e) { return 0; }
+async function getAxieStats(wallet) {
+    console.log(`Đang lấy dữ liệu cho ví: ${wallet.name}...`);
+    
+    try {
+        const response = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": wallet.token,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            body: JSON.stringify({
+                operationName: "GetQuestsSeasonStatsAndUserRank",
+                variables: { user: wallet.address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
+                query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!) {
+                    userLeaderboardRank(user: $user, type: $leaderboardType) { score rank }
+                }`
+            })
+        });
+
+        const result = await response.json();
+        return result.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
+    } catch (error) {
+        console.error(`Lỗi lấy dữ liệu ví ${wallet.name}:`, error);
+        return { score: 0, rank: "Lỗi API" };
+    }
 }
 
-(async () => {
-    const browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox'] });
-    const page = await browser.newPage();
-    
+async function run() {
     for (const wallet of wallets) {
-        if (!wallet.token) continue;
-        console.log(`Đang cập nhật ví: ${wallet.name}...`);
+        if (!wallet.token) {
+            console.log(`Bỏ qua ví ${wallet.name} (Không có token)`);
+            continue;
+        }
 
-        // 1. Fetch BP từ API Axie (qua Puppeteer)
-        const bpResult = await page.evaluate(async (address, token) => {
-            const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": token },
-                body: JSON.stringify({
-                    operationName: "GetQuestsSeasonStatsAndUserRank",
-                    variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
-                    query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!) {
-                        userLeaderboardRank(user: $user, type: $leaderboardType) { score rank }
-                    }`
-                })
-            });
-            const data = await res.json();
-            return data.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
-        }, wallet.address, wallet.token);
-
-        // 2. Fetch Assets (Số dư từ RPC)
-        const cleanAddress = wallet.address.toLowerCase().replace("0x", "");
-        const balanceDataParam = "0x70a08231000000000000000000000000" + cleanAddress;
+        const stats = await getAxieStats(wallet);
         
-        const assets = await Promise.all([
-            fetch(roninRpcUrl, {method:'POST', body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[wallet.address, "latest"], id:1})}),
-            fetch(roninRpcUrl, {method:'POST', body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2})}),
-            fetch(roninRpcUrl, {method:'POST', body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3})}),
-            fetch(roninRpcUrl, {method:'POST', body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4})}),
-            fetch(roninRpcUrl, {method:'POST', body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: STAKED_AXS_CONTRACT, data: balanceDataParam}, "latest"], id:5})})
-        ]).then(responses => Promise.all(responses.map(r => r.json())));
-
-        const assetData = {
-            ron: hexToDec(assets[0].result, 18),
-            slp: hexToDec(assets[1].result, 0),
-            axs: hexToDec(assets[2].result, 18) + hexToDec(assets[4].result, 18),
-            weth: hexToDec(assets[3].result, 18),
+        // Ghi vào Firebase
+        const updateData = {
+            startBp: stats.score,
+            rank: stats.rank,
             updatedAt: new Date().toISOString()
         };
 
-        // 3. Ghi vào Firebase
-        await fetch(`${FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`, {
-            method: 'PUT',
-            body: JSON.stringify({ startBp: bpResult.score, rank: bpResult.rank, updatedAt: new Date().toISOString() })
-        });
-        await fetch(`${FIREBASE_URL}/axie_master/wallet_assets/${wallet.address.toLowerCase()}.json`, {
-            method: 'PUT',
-            body: JSON.stringify(assetData)
-        });
-
-        console.log(`✅ ${wallet.name} đã cập nhật BP và Assets!`);
+        await db.ref('axie_master/daily_tracker/' + wallet.address.toLowerCase()).set(updateData);
+        console.log(`Đã cập nhật ví ${wallet.name}: ${stats.score} BP (Hạng: ${stats.rank})`);
     }
+    console.log("Hoàn tất cập nhật tất cả ví!");
+    process.exit();
+}
 
-    await browser.close();
-})();
+run();
