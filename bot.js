@@ -1,3 +1,9 @@
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const fetch = require('node-fetch');
+
+// Cấu hình Stealth
+puppeteer.use(StealthPlugin());
 
 const wallets = [
     { name: "Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", token: process.env.TOKEN_MOMO },
@@ -11,53 +17,67 @@ const wallets = [
 ];
 
 async function updateWallet(wallet) {
+    if (!wallet.token) return;
+
+    console.log(`--- Đang xử lý: ${wallet.name} ---`);
+    
+    // Khởi tạo trình duyệt tàng hình
+    const browser = await puppeteer.launch({
+        headless: "new",
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
     try {
-        console.log(`Đang xử lý ví: ${wallet.name}`);
+        const page = await browser.newPage();
         
-        const response = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "Authorization": wallet.token,
-                // Thêm các headers này để giả lập trình duyệt thật
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-                "Accept": "*/*",
-                "Origin": "https://app.roninchain.com",
-                "Referer": "https://app.roninchain.com/"
-            },
+        // Điều hướng tới trang trung gian hoặc trang chính để khởi tạo session
+        await page.goto('https://app.roninchain.com/', { waitUntil: 'networkidle2' });
+
+        // Thực hiện request GraphQL từ bên trong trình duyệt (đã được Stealth Plugin bảo vệ)
+        const stats = await page.evaluate(async (w) => {
+            const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "Authorization": w.token,
+                    "Origin": "https://app.roninchain.com",
+                    "Referer": "https://app.roninchain.com/"
+                },
+                body: JSON.stringify({
+                    query: `query { userLeaderboardRank(user: "${w.address}", type: WeeklyPremierQuestPoints) { score rank } }`
+                })
+            });
+            return await res.json();
+        }, wallet);
+
+        const data = stats.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
+        console.log(`Kết quả: ${data.score} BP (Hạng: ${data.rank})`);
+
+        // Đẩy lên Firebase bằng REST API (dùng lại fetch của Node)
+        const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
+        await fetch(fbUrl, {
+            method: "PUT",
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                query: `query { userLeaderboardRank(user: "${wallet.address}", type: WeeklyPremierQuestPoints) { score rank } }`
+                startBp: data.score,
+                rank: data.rank,
+                updatedAt: new Date().toISOString()
             })
         });
 
-        const text = await response.text(); // Đọc dạng text trước để debug
-        try {
-            const json = JSON.parse(text);
-            const stats = json.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
-            
-            // Đẩy lên Firebase
-            const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
-            await fetch(fbUrl, {
-                method: "PUT",
-                body: JSON.stringify({
-                    startBp: stats.score,
-                    rank: stats.rank,
-                    updatedAt: new Date().toISOString()
-                })
-            });
-            console.log(`-> Xong! ${wallet.name}: ${stats.score} BP`);
-        } catch (parseError) {
-            console.error(`Dữ liệu nhận về không phải JSON:`, text);
-        }
+        console.log(`-> Đã cập nhật Firebase thành công.`);
     } catch (e) {
         console.error(`Lỗi ví ${wallet.name}:`, e.message);
+    } finally {
+        await browser.close();
     }
 }
 
 async function run() {
     for (const w of wallets) {
-        if (w.token) await updateWallet(w);
+        await updateWallet(w);
     }
+    process.exit();
 }
 
 run();
