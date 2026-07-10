@@ -1,17 +1,4 @@
-const admin = require("firebase-admin");
 
-// 1. Cấu hình Firebase Admin (Đảm bảo bạn đã cài: npm install firebase-admin)
-// Bạn cần tạo serviceAccountKey.json từ Firebase Console -> Project Settings -> Service Accounts
-const serviceAccount = require("./serviceAccountKey.json"); 
-
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: process.env.FIREBASE_URL
-});
-
-const db = admin.database();
-
-// 2. Danh sách ví (Sử dụng biến môi trường từ GitHub Secrets)
 const wallets = [
     { name: "Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", token: process.env.TOKEN_MOMO },
     { name: "James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7", token: process.env.TOKEN_JAMES1 },
@@ -23,55 +10,48 @@ const wallets = [
     { name: "Loki", address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab", token: process.env.TOKEN_LOKI }
 ];
 
-async function getAxieStats(wallet) {
-    console.log(`Đang lấy dữ liệu cho ví: ${wallet.name}...`);
-    
+async function updateWallet(wallet) {
     try {
-        const response = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
+        console.log(`Đang xử lý ví: ${wallet.name}`);
+        
+        // 1. Lấy dữ liệu từ Axie
+        const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json", 
-                "Authorization": wallet.token,
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "Authorization": wallet.token 
             },
             body: JSON.stringify({
-                operationName: "GetQuestsSeasonStatsAndUserRank",
-                variables: { user: wallet.address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
-                query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!) {
-                    userLeaderboardRank(user: $user, type: $leaderboardType) { score rank }
-                }`
+                query: `query { userLeaderboardRank(user: "${wallet.address}", type: WeeklyPremierQuestPoints) { score rank } }`
+            })
+        });
+        
+        const json = await res.json();
+        const stats = json.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
+
+        // 2. Đẩy lên Firebase bằng REST API
+        // FIREBASE_URL phải có dạng: https://your-db.firebaseio.com/
+        const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
+        
+        await fetch(fbUrl, {
+            method: "PUT",
+            body: JSON.stringify({
+                startBp: stats.score,
+                rank: stats.rank,
+                updatedAt: new Date().toISOString()
             })
         });
 
-        const result = await response.json();
-        return result.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
-    } catch (error) {
-        console.error(`Lỗi lấy dữ liệu ví ${wallet.name}:`, error);
-        return { score: 0, rank: "Lỗi API" };
+        console.log(`-> Xong! ${wallet.name}: ${stats.score} BP`);
+    } catch (e) {
+        console.error(`Lỗi ví ${wallet.name}:`, e.message);
     }
 }
 
 async function run() {
-    for (const wallet of wallets) {
-        if (!wallet.token) {
-            console.log(`Bỏ qua ví ${wallet.name} (Không có token)`);
-            continue;
-        }
-
-        const stats = await getAxieStats(wallet);
-        
-        // Ghi vào Firebase
-        const updateData = {
-            startBp: stats.score,
-            rank: stats.rank,
-            updatedAt: new Date().toISOString()
-        };
-
-        await db.ref('axie_master/daily_tracker/' + wallet.address.toLowerCase()).set(updateData);
-        console.log(`Đã cập nhật ví ${wallet.name}: ${stats.score} BP (Hạng: ${stats.rank})`);
+    for (const w of wallets) {
+        if (w.token) await updateWallet(w);
     }
-    console.log("Hoàn tất cập nhật tất cả ví!");
-    process.exit();
 }
 
 run();
