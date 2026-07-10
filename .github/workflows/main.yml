@@ -1,18 +1,33 @@
 name: Axie Auto Snapshot Bot
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   run-snapshot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Lấy mã nguồn về máy chủ
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Node.js môi trường
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Chạy Bot
+
+      - name: Cài đặt thư viện hệ thống cho Puppeteer
+        # Các thư viện này giúp Puppeteer chạy được trên môi trường Ubuntu của GitHub
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+
+      - name: Cài đặt dependencies của dự án
+        run: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth node-fetch
+
+      - name: Khởi động Bot lấy điểm
         env:
           FIREBASE_URL: ${{ secrets.FIREBASE_URL }}
           TOKEN_MOMO: ${{ secrets.TOKEN_MOMO }}
