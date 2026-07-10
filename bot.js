@@ -24,7 +24,13 @@ async function updateWallet(wallet) {
     // Khởi tạo trình duyệt tàng hình
     const browser = await puppeteer.launch({
         headless: "new",
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        executablePath: '/usr/bin/chromium-browser', // Dòng này là bắt buộc trên Linux/GitHub Actions
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage', // Giúp tránh lỗi tràn bộ nhớ trên GitHub
+            '--disable-gpu'
+        ]
     });
 
     try {
