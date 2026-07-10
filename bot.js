@@ -40,20 +40,29 @@ async function updateWallet(wallet) {
         await page.goto('https://app.roninchain.com/', { waitUntil: 'networkidle2' });
 
         // Thực hiện request GraphQL từ bên trong trình duyệt (đã được Stealth Plugin bảo vệ)
-        const stats = await page.evaluate(async (w) => {
-            const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
+      const stats = await page.evaluate(async (w) => {
+            const response = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json", 
+                headers: {
+                    "Content-Type": "application/json",
                     "Authorization": w.token,
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
                     "Origin": "https://app.roninchain.com",
                     "Referer": "https://app.roninchain.com/"
                 },
                 body: JSON.stringify({
-                    query: `query { userLeaderboardRank(user: "${w.address}", type: WeeklyPremierQuestPoints) { score rank } }`
+                    operationName: "GetQuestsSeasonStatsAndUserRank",
+                    variables: { 
+                        user: w.address, 
+                        includeUserRank: true, 
+                        leaderboardType: "WeeklyPremierQuestPoints" 
+                    },
+                    query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!) {
+                        userLeaderboardRank(user: $user, type: $leaderboardType) { score rank }
+                    }`
                 })
             });
-            return await res.json();
+            return await response.json();
         }, wallet);
 
         const data = stats.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
