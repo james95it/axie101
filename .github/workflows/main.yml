@@ -10,24 +10,17 @@ jobs:
   run-snapshot:
     runs-on: ubuntu-latest
     steps:
-      - name: Lấy mã nguồn về máy chủ
+      - name: Lấy mã nguồn
         uses: actions/checkout@v4
 
-      - name: Cài đặt Node.js môi trường
+      - name: Cài đặt Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
 
-      - name: Cài đặt thư viện hệ thống cho Puppeteer
-        # Các thư viện này giúp Puppeteer chạy được trên môi trường Ubuntu của GitHub
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
-
-      - name: Cài đặt dependencies của dự án
-        run: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth node-fetch
-
-      - name: Khởi động Bot lấy điểm
+      - name: Cài đặt thư viện
+        run: npm install axios
+      - name: Chạy Bot
         env:
           FIREBASE_URL: ${{ secrets.FIREBASE_URL }}
           TOKEN_MOMO: ${{ secrets.TOKEN_MOMO }}
