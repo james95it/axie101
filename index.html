@@ -253,15 +253,16 @@
     async function fetchAssets(address) { try { const cleanAddress = address.toLowerCase().replace("0x", ""); const balanceDataParam = "0x70a08231" + "000000000000000000000000" + cleanAddress; const [ronRes, slpRes, axsRes, wethRes, stakedAxsRes] = await Promise.all([ fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_getBalance", params:[address, "latest"], id:1}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: SLP_CONTRACT, data: balanceDataParam}, "latest"], id:2}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: AXS_CONTRACT, data: balanceDataParam}, "latest"], id:3}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: WETH_CONTRACT, data: balanceDataParam}, "latest"], id:4}) }), fetch(roninRpcUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({jsonrpc:"2.0", method:"eth_call", params:[{to: STAKED_AXS_CONTRACT, data: balanceDataParam}, "latest"], id:5}) }) ]); const ronData = await ronRes.json(), slpData = await slpRes.json(), axsData = await axsRes.json(), wethData = await wethRes.json(), stakedAxsData = await stakedAxsRes.json(); const totalAxs = hexToDec(axsData.result, 18) + hexToDec(stakedAxsData.result, 18); return { ron: hexToDec(ronData.result, 18), slp: hexToDec(slpData.result, 0), axs: totalAxs, weth: hexToDec(wethData.result, 18) }; } catch (e) { return { ron: 0, slp: 0, axs: 0, weth: 0 }; } }
     async function fetchBountyData(address, authToken) { if(!authToken) return { bp: "---", rank: "---" }; const rawBody = JSON.stringify({ operationName: "GetQuestsSeasonStatsAndUserRank", variables: { user: address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" }, query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!, $includeUserRank: Boolean!) {\n  leaderboard(type: $leaderboardType) {\n    totalParticipants\n    totalScore\n    __typename\n  }\n  userLeaderboardRank(user: $user, type: $leaderboardType) @include(if: $includeUserRank) {\n    rank\n    score\n    details\n    user\n    __typename\n  }\n}\n` }); try { const res = await fetch(graphqlUrl, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authToken }, body: rawBody }); const data = await res.json(); if (data.errors) return { bp: "Sai Token", rank: "Lỗi Token" }; const u = data.data?.userLeaderboardRank; return u ? { bp: u.score ?? 0, rank: u.rank ?? "Chưa có" } : { bp: 0, rank: "Chưa xếp hạng" }; } catch (e) { return { bp: "Lỗi mạng", rank: "Lỗi mạng" }; } }
 
-    async function updateDashboard() {
-        const listEl = document.getElementById("walletsList");
+   async function updateDashboard() {
+    const listEl = document.getElementById("walletsList");
     const btn = document.getElementById("refreshBtn");
+    const summarySection = document.getElementById("summarySection");
     
     btn.innerText = "Đang đồng bộ từ Firebase..."; 
     btn.disabled = true;
 
     try {
-        // Lấy dữ liệu đã được bot xử lý sẵn trên Firebase
+        // 1. Lấy dữ liệu từ Firebase (dữ liệu do Bot đã cày sẵn)
         const [statsSnapshot, assetsSnapshot] = await Promise.all([
             database.ref('axie_master/daily_tracker').once('value'),
             database.ref('axie_master/wallet_assets').once('value')
@@ -279,6 +280,7 @@
             const stat = statsData[addr] || { startBp: 0, rank: "N/A" };
             const asset = assetsData[addr] || { ron: 0, slp: 0, axs: 0, weth: 0 };
 
+            // Tính toán giá trị
             const totalUsd = (asset.ron * prices.ron) + (asset.slp * prices.slp) + (asset.axs * prices.axs) + (asset.weth * prices.weth);
             grandTotalUsd += totalUsd;
 
@@ -288,30 +290,34 @@
                 <div class="wallet-name">${wallet.name}</div>
                 <div class="wallet-address">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
                 <div class="assets-section">
-                    <div class="asset-item">RON: <span>${asset.ron.toFixed(3)}</span></div>
-                    <div class="asset-item">SLP: <span>${asset.slp.toLocaleString()}</span></div>
-                    <div class="asset-item">AXS: <span>${asset.axs.toFixed(3)}</span></div>
-                    <div class="asset-item">WETH: <span>${asset.weth.toFixed(4)}</span></div>
+                    <div class="section-title"><span>Tài sản hiện tại</span></div>
+                    <div class="asset-item"><span class="asset-name ron-text">RON</span><span class="asset-value">${asset.ron.toFixed(3)}</span></div>
+                    <div class="asset-item"><span class="asset-name slp-text">SLP</span><span class="asset-value">${asset.slp.toLocaleString()}</span></div>
+                    <div class="asset-item"><span class="asset-name axs-text">AXS</span><span class="asset-value">${asset.axs.toFixed(3)}</span></div>
+                    <div class="asset-item"><span class="asset-name weth-text">WETH</span><span class="asset-value">${asset.weth.toFixed(4)}</span></div>
+                    <div class="total-usd-item"><span>Tổng:</span><span style="color:#0dbb72;">$${totalUsd.toFixed(2)}</span></div>
                 </div>
                 <div class="bounty-badge">
                     <div class="bounty-main">
-                        <div><span style="font-size:12px; color:#929aa5">BP</span><br><strong>${stat.startBp}</strong></div>
-                        <div><span style="font-size:12px; color:#929aa5">Hạng</span><br><strong>${stat.rank}</strong></div>
+                        <div class="bounty-info"><span class="section-title" style="border:none; margin:0; padding:0;">Nhiệm Vụ</span><span class="bounty-rank">Hạng: ${stat.rank}</span></div>
+                        <span class="bounty-value">${stat.startBp}</span>
                     </div>
                 </div>
             `;
             listEl.appendChild(card);
         }
+
         document.getElementById("grandTotalValue").innerText = `$${grandTotalUsd.toFixed(2)}`;
-        document.getElementById("summarySection").style.display = "block";
+        summarySection.style.display = "block";
+        
     } catch (e) {
-        console.error(e);
-        alert("Lỗi đồng bộ Firebase!");
+        console.error("Lỗi đồng bộ Firebase:", e);
+        alert("Không thể tải dữ liệu từ Firebase!");
     } finally {
-        btn.innerText = "Cập nhật toàn bộ";
+        btn.innerText = "Cập nhật toàn bộ"; 
         btn.disabled = false;
     }
-    }
+}
 </script>
 
 </body>
