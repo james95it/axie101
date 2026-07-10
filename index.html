@@ -255,97 +255,62 @@
 
     async function updateDashboard() {
         const listEl = document.getElementById("walletsList");
-        const btn = document.getElementById("refreshBtn");
-        const summarySection = document.getElementById("summarySection");
-        const warningSection = document.getElementById("warningSection");
-        const grandTotalValueEl = document.getElementById("grandTotalValue");
-        const grandTotalDiffValueEl = document.getElementById("grandTotalDiffValue");
-        
-        btn.innerText = "Đang lấy dữ liệu..."; btn.disabled = true;
-        listEl.innerHTML = ""; summarySection.style.display = "none"; warningSection.style.display = "none";
+    const btn = document.getElementById("refreshBtn");
+    
+    btn.innerText = "Đang đồng bộ từ Firebase..."; 
+    btn.disabled = true;
 
-        let grandTotalUsd = 0; let grandTotalDiffUsd = 0; let hasAtLeastOneDiffData = false; let forgottenWallets = [];
-        const prices = await fetchLivePrices();
+    try {
+        // Lấy dữ liệu đã được bot xử lý sẵn trên Firebase
+        const [statsSnapshot, assetsSnapshot] = await Promise.all([
+            database.ref('axie_master/daily_tracker').once('value'),
+            database.ref('axie_master/wallet_assets').once('value')
+        ]);
+
+        const statsData = statsSnapshot.val() || {};
+        const assetsData = assetsSnapshot.val() || {};
+        const prices = await fetchLivePrices(); 
+
+        listEl.innerHTML = "";
+        let grandTotalUsd = 0;
 
         for (const wallet of wallets) {
-            const card = document.createElement("div"); card.className = "wallet-card"; listEl.appendChild(card);
-            const [assets, bountyData] = await Promise.all([fetchAssets(wallet.address), fetchBountyData(wallet.address, wallet.token)]);
-            const totalUsd = (assets.ron * prices.ron) + (assets.slp * prices.slp) + (assets.axs * prices.axs) + (assets.weth * prices.weth);
+            const addr = wallet.address.toLowerCase();
+            const stat = statsData[addr] || { startBp: 0, rank: "N/A" };
+            const asset = assetsData[addr] || { ron: 0, slp: 0, axs: 0, weth: 0 };
+
+            const totalUsd = (asset.ron * prices.ron) + (asset.slp * prices.slp) + (asset.axs * prices.axs) + (asset.weth * prices.weth);
             grandTotalUsd += totalUsd;
 
-            const diffStats = await processFarmingDiff(wallet.address, assets);
-            let diffHtml = "";
-            if (!diffStats) {
-                diffHtml = `<div class="diff-section"><div class="text-gray">Chưa đủ dữ liệu chốt sổ.<br>Hệ thống đã cập nhật mốc lên máy chủ.</div></div>`;
-            } else {
-                hasAtLeastOneDiffData = true;
-                const diffUsd = (diffStats.ron * prices.ron) + (diffStats.slp * prices.slp) + (diffStats.axs * prices.axs) + (diffStats.weth * prices.weth);
-                grandTotalDiffUsd += diffUsd;
-                const diffUsdClass = diffUsd > 0 ? "text-green" : (diffUsd < 0 ? "text-red" : "");
-                const diffUsdSign = diffUsd > 0 ? "+" : "";
-                const rowsHtml = renderDiffRow("SLP", diffStats.slp, "slp-text", 0) + renderDiffRow("RON", diffStats.ron, "ron-text", 3) + renderDiffRow("AXS", diffStats.axs, "axs-text", 3) + renderDiffRow("WETH", diffStats.weth, "weth-text", 4);
-                if (rowsHtml === "") {
-                    diffHtml = `<div class="diff-section"><div class="text-gray">Tài sản không đổi so với Thứ 5.</div></div>`;
-                } else {
-                    diffHtml = `<div class="diff-section"><div class="section-title" style="border:none; margin-bottom:5px;"><span>Tiến độ từ Thứ 5</span></div>${rowsHtml}<div class="diff-total ${diffUsdClass}">${diffUsdSign}$${diffUsd.toFixed(2)}</div></div>`;
-                }
-            }
-
-            const dailyStats = await getDailyStats(wallet.address, bountyData.bp);
-            if (dailyStats.warned) forgottenWallets.push(wallet.name);
-            const badgeClass = dailyStats.warned ? "bounty-badge warning-badge" : "bounty-badge";
-            const badgeTitleColor = dailyStats.warned ? "#f6465d" : "#f0b90b";
-            
-            let dailyGainHtml = dailyStats.tracked ? `
-                <div class="daily-gain-container">
-                    <div class="daily-row"><span>Mốc 10:01:</span><span class="daily-val">${dailyStats.start} BP</span></div>
-                    <div class="daily-row"><span>Hiện tại:</span><span class="daily-val">${dailyStats.current} BP</span></div>
-                    <div class="daily-row" style="margin-top: 10px;"><span style="font-size: 14px; font-weight: bold;">Đã cày:</span><span class="${dailyStats.gain > 0 ? 'gain-badge' : 'zero-badge'}">${dailyStats.gain > 0 ? '+' + dailyStats.gain : '0'} BP</span></div>
-                    ${dailyStats.warned ? '<div class="daily-alert">⚠️ ĐIỂM CHƯA NHẢY - HÃY VÀO LÀM NHIỆM VỤ!</div>' : ''}
-                </div>` : `<div class="daily-alert" style="color: #929aa5; border-color: #555; background: #222; animation: none;">Lỗi token hoặc mạng</div>`;
-
+            const card = document.createElement("div");
+            card.className = "wallet-card";
             card.innerHTML = `
                 <div class="wallet-name">${wallet.name}</div>
                 <div class="wallet-address">${wallet.address.substring(0,6)}...${wallet.address.slice(-4)}</div>
                 <div class="assets-section">
-                    <div class="section-title"><span>Tài sản hiện tại</span></div>
-                    <div class="asset-item"><span class="asset-name ron-text">RON</span><div class="asset-numbers"><span class="asset-value">${assets.ron.toFixed(3)}</span><span class="usd-value">~$${(assets.ron * prices.ron).toFixed(2)}</span></div></div>
-                    <div class="asset-item"><span class="asset-name slp-text">SLP</span><div class="asset-numbers"><span class="asset-value">${assets.slp.toLocaleString()}</span><span class="usd-value">~$${(assets.slp * prices.slp).toFixed(2)}</span></div></div>
-                    <div class="asset-item"><span class="asset-name axs-text">AXS</span><div class="asset-numbers"><span class="asset-value">${assets.axs.toFixed(3)}</span><span class="usd-value">~$${(assets.axs * prices.axs).toFixed(2)}</span></div></div>
-                    <div class="asset-item"><span class="asset-name weth-text">WETH</span><div class="asset-numbers"><span class="asset-value">${assets.weth.toFixed(4)}</span><span class="usd-value">~$${(assets.weth * prices.weth).toFixed(2)}</span></div></div>
-                    <div class="total-usd-item"><span>Tổng:</span><span style="color:#0dbb72;">$${totalUsd.toFixed(2)}</span></div>
+                    <div class="asset-item">RON: <span>${asset.ron.toFixed(3)}</span></div>
+                    <div class="asset-item">SLP: <span>${asset.slp.toLocaleString()}</span></div>
+                    <div class="asset-item">AXS: <span>${asset.axs.toFixed(3)}</span></div>
+                    <div class="asset-item">WETH: <span>${asset.weth.toFixed(4)}</span></div>
                 </div>
-                ${diffHtml}
-                <div class="${badgeClass}">
+                <div class="bounty-badge">
                     <div class="bounty-main">
-                        <div class="bounty-info"><span class="section-title" style="border:none; margin:0; padding:0; color:${badgeTitleColor};">Nhiệm Vụ</span><span class="bounty-rank">Hạng: ${bountyData.rank}</span></div>
-                        <span class="bounty-value" style="color: ${badgeTitleColor}">${bountyData.bp}</span>
+                        <div><span style="font-size:12px; color:#929aa5">BP</span><br><strong>${stat.startBp}</strong></div>
+                        <div><span style="font-size:12px; color:#929aa5">Hạng</span><br><strong>${stat.rank}</strong></div>
                     </div>
-                    ${dailyGainHtml}
-                </div>`;
+                </div>
+            `;
+            listEl.appendChild(card);
         }
-
-        grandTotalValueEl.innerText = `$${grandTotalUsd.toFixed(2)}`;
-        if (hasAtLeastOneDiffData) {
-            const grandSign = grandTotalDiffUsd > 0 ? "+" : "";
-            grandTotalDiffValueEl.className = grandTotalDiffUsd > 0 ? "text-green" : "text-red";
-            grandTotalDiffValueEl.innerText = `${grandSign}$${grandTotalDiffUsd.toFixed(2)}`;
-        }
-        summarySection.style.display = "block";
-        if (forgottenWallets.length > 0) {
-            warningSection.style.background = "rgba(246, 70, 93, 0.1)";
-            warningSection.style.borderColor = "rgba(246, 70, 93, 0.4)";
-            warningSection.style.color = "#f6465d";
-            warningSection.innerHTML = `🚨 <b>CẢNH BÁO:</b> Ví chưa cày điểm từ 10h01: <b>${forgottenWallets.join(" • ")}</b>`;
-            warningSection.style.display = "block";
-        } else if (wallets.length > 0) {
-            warningSection.style.background = "rgba(13, 187, 114, 0.1)";
-            warningSection.style.borderColor = "rgba(13, 187, 114, 0.4)";
-            warningSection.style.color = "#0dbb72";
-            warningSection.innerHTML = `✅ <b>TUYỆT VỜI:</b> Tất cả các ví đều đã hoàn thành nhiệm vụ hôm nay!`;
-            warningSection.style.display = "block";
-        }
-        btn.innerText = "Cập nhật toàn bộ"; btn.disabled = false;
+        document.getElementById("grandTotalValue").innerText = `$${grandTotalUsd.toFixed(2)}`;
+        document.getElementById("summarySection").style.display = "block";
+    } catch (e) {
+        console.error(e);
+        alert("Lỗi đồng bộ Firebase!");
+    } finally {
+        btn.innerText = "Cập nhật toàn bộ";
+        btn.disabled = false;
+    }
     }
 </script>
 
