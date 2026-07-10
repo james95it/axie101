@@ -16,7 +16,7 @@ jobs:
       - name: Cài đặt Node.js môi trường
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Cài đặt thư viện Trình duyệt tàng hình
         run: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
