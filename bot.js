@@ -14,35 +14,41 @@ async function updateWallet(wallet) {
     try {
         console.log(`Đang xử lý ví: ${wallet.name}`);
         
-        // 1. Lấy dữ liệu từ Axie
-        const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
+        const response = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
             method: "POST",
             headers: { 
-                "Content-Type": "application/json", 
-                "Authorization": wallet.token 
+                "Content-Type": "application/json",
+                "Authorization": wallet.token,
+                // Thêm các headers này để giả lập trình duyệt thật
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                "Accept": "*/*",
+                "Origin": "https://app.roninchain.com",
+                "Referer": "https://app.roninchain.com/"
             },
             body: JSON.stringify({
                 query: `query { userLeaderboardRank(user: "${wallet.address}", type: WeeklyPremierQuestPoints) { score rank } }`
             })
         });
-        
-        const json = await res.json();
-        const stats = json.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
 
-        // 2. Đẩy lên Firebase bằng REST API
-        // FIREBASE_URL phải có dạng: https://your-db.firebaseio.com/
-        const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
-        
-        await fetch(fbUrl, {
-            method: "PUT",
-            body: JSON.stringify({
-                startBp: stats.score,
-                rank: stats.rank,
-                updatedAt: new Date().toISOString()
-            })
-        });
-
-        console.log(`-> Xong! ${wallet.name}: ${stats.score} BP`);
+        const text = await response.text(); // Đọc dạng text trước để debug
+        try {
+            const json = JSON.parse(text);
+            const stats = json.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
+            
+            // Đẩy lên Firebase
+            const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
+            await fetch(fbUrl, {
+                method: "PUT",
+                body: JSON.stringify({
+                    startBp: stats.score,
+                    rank: stats.rank,
+                    updatedAt: new Date().toISOString()
+                })
+            });
+            console.log(`-> Xong! ${wallet.name}: ${stats.score} BP`);
+        } catch (parseError) {
+            console.error(`Dữ liệu nhận về không phải JSON:`, text);
+        }
     } catch (e) {
         console.error(`Lỗi ví ${wallet.name}:`, e.message);
     }
