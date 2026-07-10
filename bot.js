@@ -1,63 +1,51 @@
-const axios = require('axios');
+const fetch = require('node-fetch');
 
+// Danh sách ví và Token của bạn
 const wallets = [
-    { name: "Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", token: process.env.TOKEN_MOMO },
-    { name: "James1", address: "0x39fac7a74365c188c293bd9a064323b50e63cde7", token: process.env.TOKEN_JAMES1 },
-    { name: "Crysite", address: "0xe9add5b325d2b7f869b3a3c7b1047600a76192f7", token: process.env.TOKEN_CRYSITE },
-    { name: "Cody", address: "0x9b3bc1c03e5a8889e893e54950a7c31c11301b79", token: process.env.TOKEN_CODY },
-    { name: "Randy", address: "0x7ca6b3a5d9ec0ba2ba00298aa67b768d9bbf7e01", token: process.env.TOKEN_RANDY },
-    { name: "Omi", address: "0x92b626df33ba8bf0d3abd7297e48e5e48e1be030", token: process.env.TOKEN_OMI },
-    { name: "Pokemon", address: "0x374ef4e2154a37ee4fa27b30a173f2f68978c740", token: process.env.TOKEN_POKEMON },
-    { name: "Loki", address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab", token: process.env.TOKEN_LOKI }
+    { name: "Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", token: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFlZjIwY2U3LWJlOTgtNjIwNS1iNWJiLTU1NDFjYjE3ODk4NCIsInNpZCI6MjQwODU3MDM0LCJyb2xlcyI6WyJ1c2VyIl0sInNjcCI6WyJhbGwiXSwiYWN0aXZhdGVkIjp0cnVlLCJhY3QiOnRydWUsInJvbmluQWRkcmVzcyI6IjB4N2YyM2ZiYTg5MzM2YTFiNmNmN2Q1OGM4OGU1YWNkNjY1NmQ1OWI1YSIsImV4cCI6MTc4NDEzMTQyMCwiaWF0IjoxNzgyOTIxODIwLCJpc3MiOiJBeGllSW5maW5pdHkiLCJzdWIiOiIxZWYyMGNlNy1iZTk4LTYyMDUtYjViYi01NTQxY2IxNzg5ODQifQ.QlUtLUstAhq8dhtWkaPkbTlgaG1CcMtEsy5Z_2srbY4" },
 ];
-async function updateWallet(wallet) {
-    if (!wallet.token) return;
-    console.log(`--- Đang xử lý: ${wallet.name} ---`);
-    
-    try {
-        // Gọi API Axie bằng axios
-        const response = await axios({
-            method: 'post',
-            url: 'https://graphql-gateway.axieinfinity.com/graphql',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': wallet.token,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-                'Referer': 'https://app.roninchain.com/',
-                'Origin': 'https://app.roninchain.com'
-            },
-            data: {
-                operationName: "GetQuestsSeasonStatsAndUserRank",
-                variables: { user: wallet.address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
-                query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!) {
-                    userLeaderboardRank(user: $user, type: $leaderboardType) { score rank }
-                }`
-            }
-        });
 
-        const stats = response.data.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
-        console.log(`Kết quả: ${stats.score} BP (Hạng: ${stats.rank})`);
+const FIREBASE_URL = "https://axie101-default-rtdb.asia-southeast1.firebasedatabase.app/"; // THAY VÀO ĐÂY
 
-        // Đẩy lên Firebase bằng axios (REST API)
-        const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
-        await axios.put(fbUrl, {
-            startBp: stats.score,
-            rank: stats.rank,
-            updatedAt: new Date().toISOString()
-        });
+async function updateData() {
+    for (const wallet of wallets) {
+        console.log(`--- Đang xử lý: ${wallet.name} ---`);
         
-        console.log("-> Đã cập nhật Firebase thành công.");
-    } catch (e) {
-        // In ra lỗi chi tiết để dễ debug
-        const status = e.response ? e.response.status : "No Response";
-        console.error(`Lỗi ví ${wallet.name} (Status: ${status}):`, e.message);
+        try {
+            // 1. Lấy dữ liệu từ Axie
+            const res = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "Authorization": wallet.token 
+                },
+                body: JSON.stringify({
+                    query: `query { userLeaderboardRank(user: "${wallet.address}", type: WeeklyPremierQuestPoints) { score rank } }`
+                })
+            });
+
+            const json = await res.json();
+            const stats = json.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
+            
+            console.log(`Kết quả: ${stats.score} BP (Hạng: ${stats.rank})`);
+
+            // 2. Đẩy lên Firebase bằng REST API
+            const fbUrl = `${FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
+            await fetch(fbUrl, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    startBp: stats.score,
+                    rank: stats.rank,
+                    updatedAt: new Date().toISOString()
+                })
+            });
+            
+            console.log("-> Đã đẩy lên Firebase thành công.");
+        } catch (err) {
+            console.error(`Lỗi ví ${wallet.name}:`, err.message);
+        }
     }
 }
 
-async function run() {
-    for (const w of wallets) {
-        await updateWallet(w);
-    }
-}
-
-run();
+updateData();
