@@ -1,31 +1,24 @@
 name: Axie Auto Snapshot Bot
 
-  workflow_dispatch: 
- Check failure on line 3 in .github/workflows/daily-run.yml
-
-
-GitHub Actions
-/ .github/workflows/daily-run.yml
-Invalid workflow file
-
-You have an error in your yaml syntax on line 3
-  push:                   # THÊM DÒNG NÀY
-    branches:             # THÊM DÒNG NÀY
-      - main              # THÊM DÒNG NÀY 
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Dòng này cực kỳ quan trọng để có nút "Run workflow" trên giao diện GitHub
 
 jobs:
   run-snapshot:
     runs-on: ubuntu-latest
     steps:
       - name: Lấy mã nguồn về máy chủ
-        uses: actions/checkout@v4 # Đã nâng cấp lên v4
+        uses: actions/checkout@v4
 
       - name: Cài đặt Node.js môi trường
-        uses: actions/setup-node@v4 # Đã nâng cấp lên v4
+        uses: actions/setup-node@v4
         with:
-          node-version: '22' # Sử dụng Node.js thế hệ mới
+          node-version: '22'
 
-      - name: Cài đặt thư viện Trình duyệt tàng hình (Puppeteer Stealth)
+      - name: Cài đặt thư viện Trình duyệt tàng hình
         run: npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
 
       - name: Khởi động Bot lấy điểm
