@@ -1,9 +1,4 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const fetch = require('node-fetch');
-
-// Cấu hình Stealth
-puppeteer.use(StealthPlugin());
+const axios = require('axios');
 
 const wallets = [
     { name: "Momo", address: "0x7f23fba89336a1b6cf7d58c88e5acd6656d59b5a", token: process.env.TOKEN_MOMO },
@@ -15,76 +10,47 @@ const wallets = [
     { name: "Pokemon", address: "0x374ef4e2154a37ee4fa27b30a173f2f68978c740", token: process.env.TOKEN_POKEMON },
     { name: "Loki", address: "0xb62c04bdd810f6b47b5221eaaeebe6fc94038aab", token: process.env.TOKEN_LOKI }
 ];
-
 async function updateWallet(wallet) {
     if (!wallet.token) return;
-
     console.log(`--- Đang xử lý: ${wallet.name} ---`);
     
-    // Khởi tạo trình duyệt tàng hình
-    const browser = await puppeteer.launch({
-        headless: "new",
-        executablePath: '/usr/bin/chromium-browser', // Dòng này là bắt buộc trên Linux/GitHub Actions
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage', // Giúp tránh lỗi tràn bộ nhớ trên GitHub
-            '--disable-gpu'
-        ]
-    });
-
     try {
-        const page = await browser.newPage();
-        
-        // Điều hướng tới trang trung gian hoặc trang chính để khởi tạo session
-        await page.goto('https://app.roninchain.com/', { waitUntil: 'networkidle2' });
-
-        // Thực hiện request GraphQL từ bên trong trình duyệt (đã được Stealth Plugin bảo vệ)
-      const stats = await page.evaluate(async (w) => {
-            const response = await fetch("https://graphql-gateway.axieinfinity.com/graphql", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": w.token,
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-                    "Origin": "https://app.roninchain.com",
-                    "Referer": "https://app.roninchain.com/"
-                },
-                body: JSON.stringify({
-                    operationName: "GetQuestsSeasonStatsAndUserRank",
-                    variables: { 
-                        user: w.address, 
-                        includeUserRank: true, 
-                        leaderboardType: "WeeklyPremierQuestPoints" 
-                    },
-                    query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!) {
-                        userLeaderboardRank(user: $user, type: $leaderboardType) { score rank }
-                    }`
-                })
-            });
-            return await response.json();
-        }, wallet);
-
-        const data = stats.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
-        console.log(`Kết quả: ${data.score} BP (Hạng: ${data.rank})`);
-
-        // Đẩy lên Firebase bằng REST API (dùng lại fetch của Node)
-        const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
-        await fetch(fbUrl, {
-            method: "PUT",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                startBp: data.score,
-                rank: data.rank,
-                updatedAt: new Date().toISOString()
-            })
+        // Gọi API Axie bằng axios
+        const response = await axios({
+            method: 'post',
+            url: 'https://graphql-gateway.axieinfinity.com/graphql',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': wallet.token,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                'Referer': 'https://app.roninchain.com/',
+                'Origin': 'https://app.roninchain.com'
+            },
+            data: {
+                operationName: "GetQuestsSeasonStatsAndUserRank",
+                variables: { user: wallet.address, includeUserRank: true, leaderboardType: "WeeklyPremierQuestPoints" },
+                query: `query GetQuestsSeasonStatsAndUserRank($leaderboardType: LeaderboardType!, $user: String!) {
+                    userLeaderboardRank(user: $user, type: $leaderboardType) { score rank }
+                }`
+            }
         });
 
-        console.log(`-> Đã cập nhật Firebase thành công.`);
+        const stats = response.data.data?.userLeaderboardRank || { score: 0, rank: "N/A" };
+        console.log(`Kết quả: ${stats.score} BP (Hạng: ${stats.rank})`);
+
+        // Đẩy lên Firebase bằng axios (REST API)
+        const fbUrl = `${process.env.FIREBASE_URL}/axie_master/daily_tracker/${wallet.address.toLowerCase()}.json`;
+        await axios.put(fbUrl, {
+            startBp: stats.score,
+            rank: stats.rank,
+            updatedAt: new Date().toISOString()
+        });
+        
+        console.log("-> Đã cập nhật Firebase thành công.");
     } catch (e) {
-        console.error(`Lỗi ví ${wallet.name}:`, e.message);
-    } finally {
-        await browser.close();
+        // In ra lỗi chi tiết để dễ debug
+        const status = e.response ? e.response.status : "No Response";
+        console.error(`Lỗi ví ${wallet.name} (Status: ${status}):`, e.message);
     }
 }
 
@@ -92,7 +58,6 @@ async function run() {
     for (const w of wallets) {
         await updateWallet(w);
     }
-    process.exit();
 }
 
 run();
